@@ -1,0 +1,25 @@
+<?php
+
+namespace App\Http\Controllers\Api\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Plan;
+use App\Models\Subscription;
+use App\Models\User;
+use App\Support\ApiResponse;
+use Illuminate\Http\JsonResponse;
+
+class AdminDashboardController extends Controller
+{
+    public function index(): JsonResponse
+    {
+        return ApiResponse::success([
+            'total_users' => User::count(),
+            'active_users' => User::where('status', 'active')->count(),
+            'suspended_users' => User::where('status', 'suspended')->count(),
+            'pending_users' => User::where('status', 'pending')->count(),
+            'total_plans' => Plan::count(),
+            'active_subscriptions' => Subscription::whereIn('status', ['active', 'trial'])->count(),
+        ], 'Admin dashboard stats');
+    }
+}

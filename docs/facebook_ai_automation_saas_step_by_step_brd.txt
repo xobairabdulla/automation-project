@@ -1,0 +1,2018 @@
+STEP-BY-STEP BRD AND DEVELOPMENT ROADMAP
+Project: Multi-Tenant Facebook Message and Comment Automation SaaS/Agency Platform
+Stack: Laravel + MySQL + React.js + Redis Queue
+Initial Environment: Localhost
+Future Deployment: VPS
+
+============================================================
+0. PROJECT VISION
+============================================================
+
+Build a multi-tenant SaaS/Agency platform where multiple business users can connect their Facebook Pages and automate replies to Facebook Messenger messages and Facebook post comments.
+
+The platform will be managed by a Super Admin. Each client/user will have their own dashboard, usage limits, payment/subscription status, Facebook Page connection, automation rules, AI knowledge base, inbox, comments management, and analytics.
+
+The platform must first run on localhost. After testing Facebook webhook, message reply, comment reply, AI reply, usage limit, payment and admin control, the project will be deployed to a VPS.
+
+Main goals:
+1. Automate Facebook Page Messenger replies.
+2. Automate Facebook post comment replies.
+3. Support many clients under one agency platform.
+4. Track usage limits per user.
+5. Allow users to extend usage limits through payment.
+6. Give Super Admin full control over all users, plans, limits, payments and logs.
+7. Keep the system secure, scalable and production-ready.
+
+============================================================
+1. OVERALL SYSTEM ARCHITECTURE
+============================================================
+
+Backend:
+- Laravel
+- MySQL
+- Redis Queue
+- Laravel Scheduler
+- REST API
+- Laravel Sanctum or Passport for authentication
+
+Frontend:
+- React.js
+- React Router
+- Axios
+- Tailwind CSS
+- Component-based UI
+- Responsive SaaS dashboard design
+
+External Services:
+- Meta/Facebook Developer App
+- Facebook Graph API
+- Messenger API
+- Facebook Page Webhooks
+- OpenAI API or another AI provider
+- Stripe or other payment provider
+- Email SMTP provider
+
+Hosting Plan:
+- Phase 1 to Phase 7: Localhost development
+- Final phase: VPS deployment
+
+Core User Roles:
+1. Super Admin
+2. Client Admin/User
+3. Agent/Team Member
+4. Support Admin
+
+Multi-tenant approach:
+- Use a single database.
+- Add tenant_id or user_id to all client-owned tables.
+- Super Admin can see all data.
+- Client can only see their own data.
+
+============================================================
+2. COMPLETE DEVELOPMENT PHASES
+============================================================
+
+The project should be built in phases. Do not ask Claude Code to build everything at once.
+
+Recommended phases:
+
+Phase 1: Project Foundation
+Phase 2: Authentication, Roles and User Management
+Phase 3: Plans, Subscriptions and Usage Limits
+Phase 4: Super Admin Panel Backend
+Phase 5: Client Dashboard Backend
+Phase 6: Facebook Integration Foundation
+Phase 7: Facebook Webhook Receiver
+Phase 8: Message Automation Engine
+Phase 9: Comment Automation Engine
+Phase 10: Rule Engine and Reply Templates
+Phase 11: AI Knowledge Base and AI Reply System
+Phase 12: Inbox and Conversation Management
+Phase 13: Human Handover System
+Phase 14: Payment and Limit Extension
+Phase 15: Analytics and Reporting
+Phase 16: Notifications, Logs and Audit System
+Phase 17: Frontend UI Full Implementation
+Phase 18: Security Hardening
+Phase 19: Localhost Testing
+Phase 20: VPS Deployment Preparation
+
+Each phase below includes detailed requirements and a Claude Code prompt.
+
+============================================================
+PHASE 1: PROJECT FOUNDATION
+============================================================
+
+Goal:
+Set up the Laravel backend and React frontend foundation with clean structure.
+
+Backend Requirements:
+1. Create Laravel project.
+2. Configure MySQL database.
+3. Configure Redis queue or database queue for initial testing.
+4. Create REST API structure.
+5. Create base folder structure for Controllers, Services, Jobs, Requests, Resources and Models.
+6. Add environment variables for Meta, AI and payment providers, even if empty for now.
+7. Create health check API endpoint.
+8. Create API response helper for consistent JSON responses.
+9. Add global exception handling.
+
+Frontend Requirements:
+1. Create React project.
+2. Configure React Router.
+3. Configure Axios API client.
+4. Configure Tailwind CSS.
+5. Create base layouts:
+   - Auth layout
+   - Client dashboard layout
+   - Super admin layout
+6. Create placeholder pages.
+
+Database Requirements:
+Create initial migrations for:
+1. tenants
+2. users
+3. roles
+4. permissions
+5. role_user
+6. permission_role
+7. system_settings
+8. audit_logs
+
+Important Tables:
+
+tenants:
+- id
+- name
+- business_name
+- status
+- created_at
+- updated_at
+
+users:
+- id
+- tenant_id
+- name
+- email
+- phone
+- password
+- status: active, suspended, pending
+- email_verified_at
+- last_login_at
+- created_at
+- updated_at
+
+roles:
+- id
+- name
+- slug
+- created_at
+- updated_at
+
+permissions:
+- id
+- name
+- slug
+- created_at
+- updated_at
+
+system_settings:
+- id
+- key
+- value_encrypted_or_json
+- type
+- is_sensitive
+- created_at
+- updated_at
+
+Deliverables:
+1. Laravel project running locally.
+2. React project running locally.
+3. MySQL connection working.
+4. Basic API endpoint working.
+5. Basic frontend route working.
+
+Claude Code Prompt for Phase 1:
+
+You are a senior Laravel, MySQL and React.js architect. Build Phase 1 only for a multi-tenant Facebook message and comment automation SaaS platform.
+
+Stack:
+- Backend: Laravel
+- Database: MySQL
+- Queue: Redis or database queue for local testing
+- Frontend: React.js
+- API: REST API
+- CSS: Tailwind CSS
+
+Requirements:
+1. Set up Laravel backend with clean API structure.
+2. Set up React frontend with React Router, Axios and Tailwind CSS.
+3. Create migrations for tenants, users, roles, permissions, role_user, permission_role, system_settings and audit_logs.
+4. Create Laravel models and relationships.
+5. Add base API response helper.
+6. Add health check route: GET /api/health.
+7. Add base layouts in React: AuthLayout, ClientDashboardLayout and AdminDashboardLayout.
+8. Add placeholder pages for Login, Register, Client Dashboard and Admin Dashboard.
+9. Keep the code clean, scalable and ready for future phases.
+10. Do not build Facebook integration yet.
+
+============================================================
+PHASE 2: AUTHENTICATION, ROLES AND USER MANAGEMENT
+============================================================
+
+Goal:
+Build secure login, registration, role-based access and user profile system.
+
+Backend Requirements:
+1. User registration.
+2. User login.
+3. Logout.
+4. Forgot password.
+5. Reset password.
+6. Email verification if enabled.
+7. Authenticated user API.
+8. Profile update.
+9. Change password.
+10. Role-based access control.
+11. Permission-based middleware.
+12. Account status check.
+13. Login logs.
+
+API Endpoints:
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/logout
+POST /api/auth/forgot-password
+POST /api/auth/reset-password
+GET /api/auth/me
+PUT /api/auth/profile
+PUT /api/auth/change-password
+
+Database Tables:
+login_logs:
+- id
+- user_id
+- ip_address
+- user_agent
+- logged_in_at
+- created_at
+
+Frontend Requirements:
+1. Login page.
+2. Register page.
+3. Forgot password page.
+4. Reset password page.
+5. Profile page.
+6. Protected routes.
+7. Role-based route protection.
+8. Logout button.
+
+Validation Rules:
+- Email must be unique.
+- Password must be secure.
+- Suspended users cannot login.
+- Pending users can login only if allowed by admin setting.
+
+Deliverables:
+1. User can register.
+2. User can login.
+3. Auth token saved securely.
+4. Super Admin route protected.
+5. Client route protected.
+6. Suspended user blocked.
+
+Claude Code Prompt for Phase 2:
+
+Build Phase 2 only: authentication, roles and user profile system.
+
+Requirements:
+1. Use Laravel Sanctum or Passport for API authentication.
+2. Build register, login, logout, forgot password, reset password, authenticated user and profile update APIs.
+3. Add role-based middleware for Super Admin, Client Admin, Agent and Support Admin.
+4. Add permission-based structure.
+5. Add login_logs table and log successful logins.
+6. Add account status check so suspended users cannot login.
+7. Build React login, register, forgot password, reset password and profile pages.
+8. Add protected routes and role-based route protection.
+9. Add loading, error and success states.
+10. Do not build Facebook or payment features yet.
+
+============================================================
+PHASE 3: PLANS, SUBSCRIPTIONS AND USAGE LIMITS
+============================================================
+
+Goal:
+Create plan system and user usage limit tracking.
+
+Business Requirement:
+Each user will have a plan. Each plan has limits for:
+1. Message auto replies.
+2. Comment auto replies.
+3. AI replies.
+4. Connected Facebook Pages.
+5. Team members.
+6. Knowledge base items.
+
+Backend Requirements:
+1. Create plans table.
+2. Create subscriptions table.
+3. Create usage_limits table.
+4. Create usage_logs table.
+5. Create APIs to view current plan and usage.
+6. Create service to check if user can send reply.
+7. Create service to increment usage after reply is sent.
+8. Create usage reset logic by billing cycle.
+9. Add limit exceeded response and logs.
+
+Database Tables:
+
+plans:
+- id
+- name
+- description
+- monthly_price
+- yearly_price
+- message_reply_limit
+- comment_reply_limit
+- ai_reply_limit
+- connected_page_limit
+- team_member_limit
+- knowledge_base_limit
+- features_json
+- status
+- created_at
+- updated_at
+
+subscriptions:
+- id
+- tenant_id
+- user_id
+- plan_id
+- status: active, expired, cancelled, trial, pending
+- billing_cycle: monthly, yearly
+- starts_at
+- ends_at
+- next_billing_at
+- created_at
+- updated_at
+
+usage_limits:
+- id
+- tenant_id
+- user_id
+- subscription_id
+- message_reply_limit
+- message_reply_used
+- comment_reply_limit
+- comment_reply_used
+- ai_reply_limit
+- ai_reply_used
+- connected_page_limit
+- team_member_limit
+- knowledge_base_limit
+- reset_at
+- created_at
+- updated_at
+
+usage_logs:
+- id
+- tenant_id
+- user_id
+- type: message_reply, comment_reply, ai_reply, manual_reply, failed_reply, webhook_event
+- amount
+- source_id
+- source_type
+- metadata_json
+- created_at
+
+API Endpoints:
+GET /api/plans
+GET /api/user/subscription
+GET /api/user/usage
+GET /api/user/usage/history
+
+Frontend Requirements:
+1. Usage Limit page.
+2. Plan display card.
+3. Progress bars for each usage type.
+4. Usage history table.
+5. Upgrade/extend button placeholder.
+
+Deliverables:
+1. Admin can seed plans.
+2. User can see current plan.
+3. User can see usage limits.
+4. System can check usage before sending reply.
+5. System can increment usage after sending reply.
+
+Claude Code Prompt for Phase 3:
+
+Build Phase 3 only: plans, subscriptions and usage limit system.
+
+Requirements:
+1. Create migrations, models and relationships for plans, subscriptions, usage_limits and usage_logs.
+2. Create seeders for Starter, Growth and Pro plans.
+3. Create API endpoints to list plans, show user subscription and show user usage.
+4. Create UsageLimitService with methods:
+   - canSendMessageReply(user)
+   - canSendCommentReply(user)
+   - canGenerateAIReply(user)
+   - incrementUsage(user, type, amount, metadata)
+5. Create reset_at field and prepare monthly reset logic.
+6. Build React Usage & Limits page with progress bars and usage history table.
+7. Add warning state when usage is above 80%.
+8. Add blocked state when usage limit is exceeded.
+9. Do not build payment yet.
+
+============================================================
+PHASE 4: SUPER ADMIN PANEL BACKEND
+============================================================
+
+Goal:
+Super Admin can control all users, plans, limits, subscriptions and basic system data.
+
+Backend Requirements:
+1. List all users.
+2. Search users by name, email, business.
+3. Filter users by status, plan, payment status.
+4. View user details.
+5. Suspend user.
+6. Activate user.
+7. Update user plan.
+8. Extend usage limit manually.
+9. View user usage history.
+10. Manage plans.
+11. View system overview stats.
+
+API Endpoints:
+GET /api/admin/dashboard
+GET /api/admin/users
+GET /api/admin/users/{id}
+POST /api/admin/users/{id}/suspend
+POST /api/admin/users/{id}/activate
+POST /api/admin/users/{id}/assign-plan
+POST /api/admin/users/{id}/extend-limit
+GET /api/admin/plans
+POST /api/admin/plans
+PUT /api/admin/plans/{id}
+DELETE /api/admin/plans/{id}
+
+Frontend Requirements:
+1. Admin dashboard page.
+2. User management table.
+3. User profile details drawer/page.
+4. Suspend/activate buttons.
+5. Assign plan modal.
+6. Extend limit modal.
+7. Plan management page.
+
+Deliverables:
+1. Super Admin can manage users.
+2. Super Admin can manage plans.
+3. Super Admin can extend limits manually.
+4. Client cannot access admin endpoints.
+
+Claude Code Prompt for Phase 4:
+
+Build Phase 4 only: Super Admin panel backend and frontend pages.
+
+Requirements:
+1. Create admin API endpoints for dashboard stats, users, user details, suspend, activate, assign plan, extend limit and plan management.
+2. Add authorization so only Super Admin can access these routes.
+3. Add audit logs for every admin action.
+4. Build React Admin Dashboard page with overview cards.
+5. Build User Management page with search, filter, table and actions.
+6. Build Plan Management page with create, edit and deactivate plan features.
+7. Add modals for assigning plan and extending limit.
+8. Use clean SaaS dashboard UI.
+9. Do not build Facebook integration yet.
+
+============================================================
+PHASE 5: CLIENT DASHBOARD BACKEND AND UI
+============================================================
+
+Goal:
+Build the basic client dashboard where users can see their account, plan, usage, alerts and quick actions.
+
+Backend Requirements:
+1. Client dashboard stats API.
+2. Current plan API.
+3. Current usage API.
+4. Account alerts API.
+5. Recent activity API.
+
+API Endpoints:
+GET /api/dashboard
+GET /api/dashboard/alerts
+GET /api/dashboard/recent-activity
+
+Frontend Requirements:
+Client dashboard cards:
+1. Current Plan
+2. Usage Used
+3. Usage Remaining
+4. Connected Pages
+5. Messages Today
+6. Comments Today
+7. AI Replies
+8. Human Handovers
+9. Failed Replies
+
+Alerts:
+1. Usage almost finished.
+2. Payment pending.
+3. Facebook page not connected.
+4. Automation disabled.
+5. Human handover pending.
+
+Deliverables:
+1. User sees meaningful dashboard.
+2. User sees usage summary.
+3. User sees alerts.
+4. User sees quick action buttons.
+
+Claude Code Prompt for Phase 5:
+
+Build Phase 5 only: client dashboard backend APIs and React UI.
+
+Requirements:
+1. Create GET /api/dashboard endpoint for client dashboard stats.
+2. Create GET /api/dashboard/alerts endpoint.
+3. Create GET /api/dashboard/recent-activity endpoint.
+4. Build React Client Dashboard page with cards, alerts, quick actions and recent activity.
+5. Show usage progress and plan summary.
+6. Use responsive SaaS dashboard design.
+7. Do not build Facebook integration yet.
+
+============================================================
+PHASE 6: FACEBOOK INTEGRATION FOUNDATION
+============================================================
+
+Goal:
+Allow users to connect their Facebook account and select Facebook Pages.
+
+Important:
+For localhost webhook testing, use ngrok or Cloudflare Tunnel.
+
+Backend Requirements:
+1. Meta App environment variables.
+2. Facebook OAuth connect URL.
+3. Facebook OAuth callback.
+4. Exchange code for user access token.
+5. Fetch managed Facebook Pages.
+6. Store selected Facebook Page.
+7. Store Page Access Token encrypted.
+8. Disconnect page.
+9. Enable/disable page automation.
+
+Database Tables:
+
+facebook_accounts:
+- id
+- tenant_id
+- user_id
+- facebook_user_id
+- name
+- access_token_encrypted
+- token_expires_at
+- created_at
+- updated_at
+
+facebook_pages:
+- id
+- tenant_id
+- user_id
+- facebook_account_id
+- page_id
+- page_name
+- page_access_token_encrypted
+- token_expires_at
+- is_connected
+- automation_enabled
+- message_automation_enabled
+- comment_automation_enabled
+- last_webhook_received_at
+- created_at
+- updated_at
+
+API Endpoints:
+GET /api/facebook/connect-url
+GET /api/facebook/callback
+GET /api/facebook/pages
+POST /api/facebook/pages/{id}/connect
+POST /api/facebook/pages/{id}/disconnect
+POST /api/facebook/pages/{id}/enable-automation
+POST /api/facebook/pages/{id}/disable-automation
+
+Frontend Requirements:
+1. Facebook Pages page.
+2. Connect Facebook button.
+3. Show available pages.
+4. Connect selected page.
+5. Show connected pages.
+6. Automation toggles.
+7. Disconnect button.
+8. Token expired warning.
+
+Deliverables:
+1. User can connect Facebook.
+2. User can select Page.
+3. Page token saved securely.
+4. Connected page displayed in dashboard.
+
+Claude Code Prompt for Phase 6:
+
+Build Phase 6 only: Facebook OAuth and Page connection foundation.
+
+Requirements:
+1. Add Meta environment variables: META_APP_ID, META_APP_SECRET, META_REDIRECT_URI, META_VERIFY_TOKEN.
+2. Create facebook_accounts and facebook_pages migrations and models.
+3. Build Facebook OAuth connect URL endpoint.
+4. Build OAuth callback endpoint to exchange code for access token.
+5. Fetch user managed Facebook Pages.
+6. Store selected Facebook Page with encrypted Page Access Token.
+7. Build APIs to connect, disconnect, enable and disable automation for a page.
+8. Build React Facebook Pages page with connect button, page list, connected page table and automation toggles.
+9. Do not build webhooks or auto reply yet.
+
+============================================================
+PHASE 7: FACEBOOK WEBHOOK RECEIVER
+============================================================
+
+Goal:
+Receive Facebook webhook events for messages and comments.
+
+Backend Requirements:
+1. Webhook verification endpoint.
+2. Webhook POST receiver.
+3. Verify webhook token.
+4. Verify request signature if available.
+5. Save raw payload.
+6. Identify Facebook Page.
+7. Identify tenant/user.
+8. Avoid duplicate events.
+9. Queue event processing.
+10. Return HTTP 200 quickly.
+
+Database Tables:
+
+webhook_events:
+- id
+- tenant_id
+- facebook_page_id
+- event_type
+- external_event_id
+- payload_json
+- status: received, queued, processing, completed, failed, ignored
+- error_message
+- processed_at
+- created_at
+- updated_at
+
+webhook_event_logs:
+- id
+- webhook_event_id
+- status
+- message
+- metadata_json
+- created_at
+
+API Endpoints:
+GET /api/webhooks/facebook
+POST /api/webhooks/facebook
+
+Jobs:
+ProcessFacebookWebhookJob
+
+Frontend Requirements:
+Admin webhook logs page:
+1. List webhook events.
+2. Filter by status, type, user, page.
+3. View raw payload.
+4. Retry failed event.
+
+Deliverables:
+1. Meta can verify webhook.
+2. Meta can send webhook events.
+3. Events are saved.
+4. Events are queued.
+5. Admin can see webhook logs.
+
+Claude Code Prompt for Phase 7:
+
+Build Phase 7 only: Facebook webhook receiver and webhook logs.
+
+Requirements:
+1. Create webhook_events and webhook_event_logs migrations and models.
+2. Add GET /api/webhooks/facebook endpoint for Meta verification challenge.
+3. Add POST /api/webhooks/facebook endpoint to receive webhook payloads.
+4. Save raw webhook payload.
+5. Identify connected Facebook Page by page_id from payload.
+6. Link event to tenant and facebook_page_id.
+7. Avoid duplicate events using external_event_id if available.
+8. Push event to ProcessFacebookWebhookJob.
+9. Return HTTP 200 quickly.
+10. Build Super Admin Webhook Logs page with list, filters and raw payload viewer.
+11. Do not send replies yet.
+
+============================================================
+PHASE 8: MESSAGE AUTOMATION ENGINE
+============================================================
+
+Goal:
+Process incoming Facebook Messenger messages and send automated replies.
+
+Backend Requirements:
+1. Parse message webhook event.
+2. Create or update customer.
+3. Create or update conversation.
+4. Save incoming message.
+5. Check page message automation enabled.
+6. Check subscription active.
+7. Check message reply limit.
+8. Check human takeover status.
+9. Generate reply from rule engine or fallback template.
+10. Send reply through Facebook Graph API.
+11. Save outgoing message.
+12. Increment usage.
+13. Log success/failure.
+14. Respect 24-hour standard messaging window.
+
+Database Tables:
+
+customers:
+- id
+- tenant_id
+- facebook_page_id
+- external_customer_id
+- name
+- profile_picture_url
+- phone
+- email
+- tags_json
+- created_at
+- updated_at
+
+conversations:
+- id
+- tenant_id
+- facebook_page_id
+- customer_id
+- channel: facebook_messenger
+- status: open, closed, pending, human_needed
+- assigned_to
+- human_takeover
+- last_customer_message_at
+- last_reply_at
+- created_at
+- updated_at
+
+messages:
+- id
+- tenant_id
+- conversation_id
+- facebook_page_id
+- customer_id
+- direction: incoming, outgoing
+- sender_type: customer, bot, agent
+- message_text
+- external_message_id
+- status: received, sent, failed
+- metadata_json
+- created_at
+- updated_at
+
+Jobs:
+ProcessIncomingMessageJob
+SendFacebookMessageJob
+
+Services:
+FacebookMessageService
+ConversationService
+UsageLimitService
+
+Deliverables:
+1. Incoming Messenger messages are saved.
+2. Conversation is created.
+3. Basic auto reply is sent.
+4. Usage limit is checked.
+5. Usage is incremented.
+6. Failed replies are logged.
+
+Claude Code Prompt for Phase 8:
+
+Build Phase 8 only: Facebook Messenger message automation engine.
+
+Requirements:
+1. Create customers, conversations and messages migrations and models.
+2. Update webhook processing to detect incoming Messenger message events.
+3. Create or update customer from sender ID.
+4. Create or update conversation.
+5. Save incoming message.
+6. Check if page message automation is enabled.
+7. Check user subscription and message reply usage limit before replying.
+8. If human_takeover is true, do not auto reply.
+9. Send a simple default reply through Facebook Graph API.
+10. Save outgoing reply message.
+11. Increment message_reply usage.
+12. Log failed replies properly.
+13. Add service classes for clean architecture.
+14. Do not build AI reply yet.
+
+============================================================
+PHASE 9: COMMENT AUTOMATION ENGINE
+============================================================
+
+Goal:
+Process Facebook post comments and send automatic public replies.
+
+Backend Requirements:
+1. Parse comment webhook event.
+2. Save Facebook post if needed.
+3. Save comment.
+4. Check page comment automation enabled.
+5. Check subscription active.
+6. Check comment reply limit.
+7. Check comment rules.
+8. Send public reply through Facebook Graph API.
+9. Save reply.
+10. Increment usage.
+11. Log failed replies.
+
+Database Tables:
+
+facebook_posts:
+- id
+- tenant_id
+- facebook_page_id
+- external_post_id
+- message
+- permalink_url
+- created_time
+- created_at
+- updated_at
+
+facebook_comments:
+- id
+- tenant_id
+- facebook_page_id
+- facebook_post_id
+- external_comment_id
+- commenter_id
+- commenter_name
+- comment_text
+- status: new, replied, ignored, human_review, failed
+- created_time
+- created_at
+- updated_at
+
+comment_replies:
+- id
+- tenant_id
+- facebook_comment_id
+- reply_text
+- external_reply_id
+- status: sent, failed
+- error_message
+- created_at
+- updated_at
+
+Jobs:
+ProcessIncomingCommentJob
+SendFacebookCommentReplyJob
+
+Deliverables:
+1. Incoming comments are saved.
+2. Basic comment reply is sent.
+3. Usage is checked and incremented.
+4. Failed replies are logged.
+
+Claude Code Prompt for Phase 9:
+
+Build Phase 9 only: Facebook comment automation engine.
+
+Requirements:
+1. Create facebook_posts, facebook_comments and comment_replies migrations and models.
+2. Update webhook processing to detect Facebook comment events.
+3. Save post and comment data.
+4. Check if page comment automation is enabled.
+5. Check user subscription and comment reply usage limit before replying.
+6. Send a simple default public comment reply through Facebook Graph API.
+7. Save reply result.
+8. Increment comment_reply usage.
+9. Add error handling and logs.
+10. Do not build AI comment reply yet.
+
+============================================================
+PHASE 10: RULE ENGINE AND REPLY TEMPLATES
+============================================================
+
+Goal:
+Allow users to create keyword-based automation rules and reply templates.
+
+Backend Requirements:
+1. Create automation rules.
+2. Create rule conditions.
+3. Create rule actions.
+4. Create reply templates.
+5. Rule priority system.
+6. Channel support: message, comment, both.
+7. Match incoming message/comment against active rules.
+8. Execute rule action.
+9. Use reply template.
+10. Fallback reply if no rule matches.
+
+Database Tables:
+
+automation_rules:
+- id
+- tenant_id
+- facebook_page_id
+- name
+- channel: message, comment, both
+- priority
+- status: active, inactive
+- created_at
+- updated_at
+
+automation_rule_conditions:
+- id
+- automation_rule_id
+- condition_type: keyword_contains, exact_match, starts_with, outside_business_hours, first_message
+- keywords_json
+- case_sensitive
+- created_at
+- updated_at
+
+automation_rule_actions:
+- id
+- automation_rule_id
+- action_type: send_text, send_template, human_handover, mark_as_lead, do_nothing
+- reply_text
+- reply_template_id
+- metadata_json
+- created_at
+- updated_at
+
+reply_templates:
+- id
+- tenant_id
+- facebook_page_id
+- name
+- channel
+- language
+- body
+- status
+- created_at
+- updated_at
+
+API Endpoints:
+GET /api/automation-rules
+POST /api/automation-rules
+GET /api/automation-rules/{id}
+PUT /api/automation-rules/{id}
+DELETE /api/automation-rules/{id}
+GET /api/reply-templates
+POST /api/reply-templates
+PUT /api/reply-templates/{id}
+DELETE /api/reply-templates/{id}
+
+Frontend Requirements:
+1. Automation Rules page.
+2. Create Rule modal/page.
+3. Edit Rule page.
+4. Reply Templates page.
+5. Template preview.
+6. Keyword input.
+7. Rule priority field.
+
+Deliverables:
+1. User can create rules.
+2. User can create templates.
+3. Message engine uses rules.
+4. Comment engine uses rules.
+5. Highest priority rule runs first.
+
+Claude Code Prompt for Phase 10:
+
+Build Phase 10 only: automation rule engine and reply templates.
+
+Requirements:
+1. Create migrations and models for automation_rules, automation_rule_conditions, automation_rule_actions and reply_templates.
+2. Create CRUD APIs for automation rules and reply templates.
+3. Create RuleEngineService to match incoming message/comment text.
+4. Support keyword_contains, exact_match and starts_with conditions.
+5. Support actions: send_text, send_template, human_handover, mark_as_lead and do_nothing.
+6. Add priority system so lower number or higher priority rule runs first. Choose one and keep it consistent.
+7. Update message automation engine to use rule engine.
+8. Update comment automation engine to use rule engine.
+9. Build React Automation Rules page and Reply Templates page.
+10. Add validation, loading state, empty state and confirmation modal.
+
+============================================================
+PHASE 11: AI KNOWLEDGE BASE AND AI REPLY SYSTEM
+============================================================
+
+Goal:
+Allow users to add business knowledge and generate AI replies safely.
+
+Backend Requirements:
+1. Create knowledge base.
+2. Create knowledge items.
+3. Create AI prompt settings.
+4. Create AI provider settings.
+5. Generate AI reply based only on saved knowledge.
+6. Log AI request and response.
+7. Check AI usage limit before generating reply.
+8. Increment AI usage after successful AI reply.
+9. Human handover if AI does not know answer.
+10. Safety rules to prevent fake answers.
+
+Database Tables:
+
+knowledge_bases:
+- id
+- tenant_id
+- facebook_page_id
+- name
+- status
+- created_at
+- updated_at
+
+knowledge_base_items:
+- id
+- tenant_id
+- knowledge_base_id
+- title
+- category: faq, product, pricing, delivery, refund, contact, business_hours, restricted_topic
+- content
+- status
+- created_at
+- updated_at
+
+ai_prompts:
+- id
+- tenant_id
+- facebook_page_id
+- preferred_language
+- tone
+- reply_length
+- use_emoji
+- unknown_answer_action
+- restricted_instructions
+- created_at
+- updated_at
+
+ai_reply_logs:
+- id
+- tenant_id
+- conversation_id
+- facebook_comment_id
+- prompt
+- response
+- model
+- tokens_used
+- status
+- error_message
+- created_at
+
+ai_provider_settings:
+- id
+- provider_name
+- api_key_encrypted
+- model
+- status
+- created_at
+- updated_at
+
+API Endpoints:
+GET /api/knowledge-base
+POST /api/knowledge-base/items
+PUT /api/knowledge-base/items/{id}
+DELETE /api/knowledge-base/items/{id}
+GET /api/ai-settings
+PUT /api/ai-settings
+POST /api/ai/test-reply
+
+Frontend Requirements:
+1. AI Knowledge Base page.
+2. Add FAQ/product/policy item.
+3. AI Settings page.
+4. AI test box.
+5. Safety settings.
+
+AI Safety Rules:
+1. Do not invent price.
+2. Do not promise delivery unless policy exists.
+3. If answer is missing, hand over to human.
+4. Keep answer short and friendly.
+5. Follow business tone.
+6. Use allowed knowledge only.
+7. Do not give legal, medical or financial advice as final advice.
+
+Deliverables:
+1. User can add knowledge.
+2. User can configure AI tone.
+3. User can test AI reply.
+4. Message/comment automation can use AI if no rule matches.
+5. AI usage is tracked.
+
+Claude Code Prompt for Phase 11:
+
+Build Phase 11 only: AI knowledge base and AI reply system.
+
+Requirements:
+1. Create migrations and models for knowledge_bases, knowledge_base_items, ai_prompts, ai_reply_logs and ai_provider_settings.
+2. Create CRUD APIs for knowledge base items.
+3. Create AI settings API.
+4. Create AIReplyService that builds a safe prompt using only the user's saved knowledge base.
+5. Add test AI reply endpoint.
+6. Check AI usage limit before generating reply.
+7. Increment AI usage after successful generation.
+8. Log prompt, response, model, tokens and status.
+9. Add unknown answer human handover behavior.
+10. Build React AI Knowledge Base page and AI Settings page with test box.
+11. Update automation engine to optionally use AI when no rule matches.
+
+============================================================
+PHASE 12: INBOX AND CONVERSATION MANAGEMENT
+============================================================
+
+Goal:
+Create a full inbox where users can view messages, reply manually, assign conversations and manage customer details.
+
+Backend Requirements:
+1. Conversation list API.
+2. Conversation details API.
+3. Message thread API.
+4. Manual reply API.
+5. Close conversation API.
+6. Assign conversation API.
+7. Add internal notes.
+8. Add conversation tags.
+9. Mark unread/read.
+
+Database Tables:
+
+conversation_assignments:
+- id
+- tenant_id
+- conversation_id
+- assigned_to
+- assigned_by
+- created_at
+
+internal_notes:
+- id
+- tenant_id
+- conversation_id
+- user_id
+- note
+- created_at
+- updated_at
+
+conversation_tags:
+- id
+- tenant_id
+- name
+- color
+- created_at
+- updated_at
+
+conversation_tag_pivot:
+- conversation_id
+- conversation_tag_id
+
+API Endpoints:
+GET /api/inbox/conversations
+GET /api/inbox/conversations/{id}
+POST /api/inbox/conversations/{id}/reply
+POST /api/inbox/conversations/{id}/assign
+POST /api/inbox/conversations/{id}/close
+POST /api/inbox/conversations/{id}/notes
+POST /api/inbox/conversations/{id}/tags
+
+Frontend Requirements:
+Inbox layout:
+1. Left: conversation list.
+2. Middle: message thread.
+3. Right: customer profile and notes.
+
+Filters:
+- All
+- Unread
+- Open
+- Pending
+- Human Needed
+- Assigned to Me
+- Closed
+- AI Replied
+- Failed Reply
+
+Deliverables:
+1. User can see conversations.
+2. User can read messages.
+3. User can send manual reply.
+4. User can assign conversation.
+5. User can add notes and tags.
+
+Claude Code Prompt for Phase 12:
+
+Build Phase 12 only: inbox and conversation management.
+
+Requirements:
+1. Create migrations and models for conversation_assignments, internal_notes, conversation_tags and pivot table.
+2. Create APIs for conversation list, conversation details, manual reply, assign, close, notes and tags.
+3. Manual reply should send message through Facebook Graph API and save outgoing message.
+4. Manual reply should increment manual_reply usage log but not auto reply usage.
+5. Build React Inbox page with three-column layout.
+6. Add filters, search, message thread, customer profile, notes, tags and manual reply box.
+7. Add mobile responsive layout.
+
+============================================================
+PHASE 13: HUMAN HANDOVER SYSTEM
+============================================================
+
+Goal:
+Stop automation for sensitive conversations and allow human team to take over.
+
+Backend Requirements:
+1. Enable human takeover for conversation.
+2. Disable human takeover.
+3. Automation should not reply when human_takeover is true.
+4. AI should trigger human handover for sensitive cases.
+5. Add handover reason.
+6. Notify user/agent.
+
+Human Handover Triggers:
+1. Angry customer.
+2. Refund request.
+3. Complaint.
+4. Payment issue.
+5. Delivery problem.
+6. AI unknown answer.
+7. User asks for human.
+8. Bad language.
+9. High-value order.
+
+Database Update:
+Add to conversations:
+- human_takeover_reason
+- human_takeover_by
+- human_takeover_at
+
+API Endpoints:
+POST /api/conversations/{id}/human-takeover/enable
+POST /api/conversations/{id}/human-takeover/disable
+
+Frontend Requirements:
+1. Human takeover toggle.
+2. Show reason.
+3. Show automation paused badge.
+4. Resume automation button.
+5. Human Needed filter.
+
+Deliverables:
+1. AI/automation can handover.
+2. Human can take over.
+3. Automation pauses correctly.
+4. User can resume automation.
+
+Claude Code Prompt for Phase 13:
+
+Build Phase 13 only: human handover system.
+
+Requirements:
+1. Add human takeover fields to conversations table.
+2. Create APIs to enable and disable human takeover.
+3. Update message and comment automation engines so no auto reply is sent when human_takeover is active for the conversation.
+4. Update AIReplyService so unknown, angry, refund, complaint and sensitive cases trigger human handover.
+5. Add notifications when human handover is triggered.
+6. Update React Inbox UI with human takeover toggle, reason display, automation paused badge and Human Needed filter.
+
+============================================================
+PHASE 14: PAYMENT AND LIMIT EXTENSION
+============================================================
+
+Goal:
+Allow users to pay for plan subscription or extra usage limits.
+
+Payment Options:
+1. Stripe for card payment.
+2. Manual payment approval by admin.
+3. Future payment methods can be added later.
+
+Backend Requirements:
+1. Create checkout session.
+2. Payment webhook.
+3. Payment history.
+4. Invoice generation.
+5. Subscription activation.
+6. Limit extension after payment.
+7. Admin manual payment approval.
+8. Payment failure handling.
+
+Database Tables:
+
+payments:
+- id
+- tenant_id
+- user_id
+- plan_id
+- subscription_id
+- type: subscription, limit_extension
+- amount
+- currency
+- provider
+- provider_payment_id
+- status: pending, paid, failed, cancelled, refunded, manual_review
+- metadata_json
+- paid_at
+- created_at
+- updated_at
+
+invoices:
+- id
+- tenant_id
+- user_id
+- payment_id
+- invoice_number
+- amount
+- currency
+- status
+- invoice_url
+- created_at
+- updated_at
+
+limit_extension_packages:
+- id
+- name
+- message_reply_extra
+- comment_reply_extra
+- ai_reply_extra
+- price
+- status
+- created_at
+- updated_at
+
+API Endpoints:
+POST /api/payment/create-checkout
+POST /api/payment/webhook
+GET /api/payment/history
+GET /api/invoices
+GET /api/limit-extension-packages
+POST /api/limit-extension/checkout
+POST /api/admin/payments/{id}/mark-paid
+
+Frontend Requirements:
+1. Billing page.
+2. Payment history.
+3. Invoice list.
+4. Upgrade plan.
+5. Extend limit page.
+6. Payment success page.
+7. Payment failed page.
+8. Admin payment management page.
+
+Deliverables:
+1. User can select plan.
+2. User can pay.
+3. Subscription activates after payment.
+4. User can buy extra limits.
+5. Admin can approve manual payment.
+
+Claude Code Prompt for Phase 14:
+
+Build Phase 14 only: payment and limit extension system.
+
+Requirements:
+1. Create migrations and models for payments, invoices and limit_extension_packages.
+2. Add Stripe checkout or a clean payment provider abstraction so Stripe can be used first.
+3. Create checkout endpoint for plan subscription.
+4. Create checkout endpoint for limit extension.
+5. Create payment webhook endpoint.
+6. After successful payment, activate subscription or extend usage limits.
+7. Create payment history and invoice APIs.
+8. Create Super Admin manual payment approval API.
+9. Build React Billing page, Extend Limit page, Payment Success page, Payment Failed page and Admin Payment Management page.
+10. Add proper payment status handling.
+
+============================================================
+PHASE 15: ANALYTICS AND REPORTING
+============================================================
+
+Goal:
+Show user and admin analytics.
+
+User Analytics:
+1. Total messages received.
+2. Total comments received.
+3. Total auto replies sent.
+4. Total AI replies.
+5. Total manual replies.
+6. Leads collected.
+7. Human handovers.
+8. Failed replies.
+9. Usage remaining.
+10. Top keywords.
+11. Average response time.
+
+Admin Analytics:
+1. Total users.
+2. Active users.
+3. Suspended users.
+4. Total connected pages.
+5. Total messages processed.
+6. Total comments processed.
+7. Total AI cost estimate.
+8. Total revenue.
+9. Failed webhook count.
+10. Top clients by usage.
+
+Database Tables:
+
+daily_usage_stats:
+- id
+- tenant_id
+- date
+- messages_received
+- comments_received
+- message_replies_sent
+- comment_replies_sent
+- ai_replies_sent
+- manual_replies_sent
+- human_handovers
+- failed_replies
+- created_at
+- updated_at
+
+monthly_usage_stats:
+- id
+- tenant_id
+- month
+- year
+- messages_received
+- comments_received
+- message_replies_sent
+- comment_replies_sent
+- ai_replies_sent
+- manual_replies_sent
+- human_handovers
+- failed_replies
+- created_at
+- updated_at
+
+Jobs:
+GenerateDailyAnalyticsJob
+GenerateMonthlyAnalyticsJob
+
+Frontend Requirements:
+1. Client analytics dashboard.
+2. Admin analytics dashboard.
+3. Charts.
+4. Date filter.
+5. Export CSV optional.
+
+Deliverables:
+1. User can see performance.
+2. Admin can see platform performance.
+3. Stats update daily.
+
+Claude Code Prompt for Phase 15:
+
+Build Phase 15 only: analytics and reporting.
+
+Requirements:
+1. Create daily_usage_stats and monthly_usage_stats migrations and models.
+2. Create jobs to generate daily and monthly analytics from usage_logs, messages, comments and payments.
+3. Add client analytics API with date filters.
+4. Add admin analytics API with platform-wide stats.
+5. Build React analytics charts for client and admin dashboards.
+6. Include messages, comments, replies, AI replies, manual replies, failed replies, human handovers and revenue.
+7. Add CSV export if simple to implement.
+
+============================================================
+PHASE 16: NOTIFICATIONS, LOGS AND AUDIT SYSTEM
+============================================================
+
+Goal:
+Keep users and admins informed and create a reliable audit trail.
+
+Notification Types:
+1. Usage limit almost finished.
+2. Usage limit exceeded.
+3. Payment failed.
+4. Payment successful.
+5. New lead.
+6. Human handover needed.
+7. Facebook token expired.
+8. Webhook failed.
+9. AI provider error.
+10. New client registered.
+11. Subscription expiring.
+
+Database Tables:
+
+notifications:
+- id
+- tenant_id
+- user_id
+- type
+- title
+- message
+- read_at
+- metadata_json
+- created_at
+- updated_at
+
+email_logs:
+- id
+- tenant_id
+- user_id
+- to_email
+- subject
+- status
+- error_message
+- created_at
+
+Audit Logs:
+Already created in Phase 1, but now fully use it.
+
+audit_logs:
+- id
+- tenant_id
+- user_id
+- action
+- entity_type
+- entity_id
+- old_values_json
+- new_values_json
+- ip_address
+- user_agent
+- created_at
+
+Frontend Requirements:
+1. Notification dropdown.
+2. Notifications page.
+3. Admin audit logs page.
+4. Admin email logs page.
+
+Deliverables:
+1. Notifications work.
+2. Audit logs capture important actions.
+3. Admin can inspect logs.
+
+Claude Code Prompt for Phase 16:
+
+Build Phase 16 only: notifications, email logs and audit system completion.
+
+Requirements:
+1. Create notifications and email_logs migrations and models.
+2. Build notification service.
+3. Trigger notifications for usage limit warning, limit exceeded, payment success, payment failed, human handover, token expired, webhook failed and AI error.
+4. Complete audit logging for admin actions, user actions, Facebook connection, automation changes, payment changes and rule changes.
+5. Build React notification dropdown and notifications page.
+6. Build Super Admin Audit Logs page and Email Logs page.
+
+============================================================
+PHASE 17: FRONTEND UI FULL IMPLEMENTATION
+============================================================
+
+Goal:
+Complete and polish the full React UI.
+
+Required Client Pages:
+1. Login
+2. Register
+3. Forgot Password
+4. Reset Password
+5. Client Dashboard
+6. Inbox
+7. Comments
+8. Automation Rules
+9. Reply Templates
+10. AI Knowledge Base
+11. AI Settings
+12. Facebook Pages
+13. Usage & Limits
+14. Extend Limit
+15. Billing
+16. Team Members
+17. Profile Settings
+18. Help/Support
+
+Required Admin Pages:
+1. Admin Dashboard
+2. User Management
+3. User Details
+4. Plan Management
+5. Payment Management
+6. Connected Pages
+7. Webhook Logs
+8. AI Logs
+9. Usage Reports
+10. System Settings
+11. Audit Logs
+12. Notifications
+
+UI Requirements:
+1. Clean SaaS dashboard design.
+2. Sidebar navigation.
+3. Topbar with profile and notifications.
+4. Responsive mobile layout.
+5. Skeleton loading.
+6. Empty states.
+7. Confirmation modals.
+8. Toast notifications.
+9. Error states.
+10. Search and filters.
+11. Tables with pagination.
+12. Cards and charts.
+
+Deliverables:
+1. Full frontend connected to APIs.
+2. Good UX.
+3. Mobile responsive.
+4. Admin and client separated clearly.
+
+Claude Code Prompt for Phase 17:
+
+Build Phase 17 only: full frontend UI implementation and polish.
+
+Requirements:
+1. Complete all client pages: Dashboard, Inbox, Comments, Automation Rules, Reply Templates, AI Knowledge Base, AI Settings, Facebook Pages, Usage & Limits, Extend Limit, Billing, Team Members, Profile and Help.
+2. Complete all admin pages: Dashboard, Users, Plans, Payments, Connected Pages, Webhook Logs, AI Logs, Usage Reports, System Settings and Audit Logs.
+3. Use React Router, Axios and Tailwind CSS.
+4. Add responsive sidebar and topbar.
+5. Add loading skeletons, empty states, confirmation modals and toast notifications.
+6. Add search, filters and pagination where needed.
+7. Keep UI clean, professional and SaaS-style.
+8. Connect pages to existing Laravel APIs.
+
+============================================================
+PHASE 18: SECURITY HARDENING
+============================================================
+
+Goal:
+Make the platform safer before real users use it.
+
+Security Requirements:
+1. Encrypt Facebook access tokens.
+2. Encrypt AI API keys.
+3. Encrypt payment provider secrets.
+4. Verify payment webhook signatures.
+5. Verify Facebook webhook signatures if available.
+6. Rate limit public endpoints.
+7. Rate limit login.
+8. Validate all request data.
+9. Protect against tenant data leaks.
+10. Prevent users accessing other users' data.
+11. Hide sensitive logs.
+12. Do not expose access tokens to frontend.
+13. Add CORS properly.
+14. Add secure headers.
+15. Add backup strategy.
+16. Add database indexes for performance.
+
+Deliverables:
+1. Security checks completed.
+2. Sensitive data encrypted.
+3. Tenant isolation tested.
+4. API protected.
+
+Claude Code Prompt for Phase 18:
+
+Build Phase 18 only: security hardening.
+
+Requirements:
+1. Review all APIs for authorization and tenant isolation.
+2. Ensure every client-owned query is scoped by tenant_id.
+3. Encrypt Facebook tokens, AI keys and payment secrets.
+4. Ensure sensitive values are never returned to frontend.
+5. Add rate limiting for login, webhook and public endpoints.
+6. Add request validation for all APIs.
+7. Add CORS configuration.
+8. Add payment webhook signature verification.
+9. Add Facebook webhook signature verification if available.
+10. Add database indexes for frequently searched fields.
+11. Add secure error handling so normal users do not see raw exceptions.
+
+============================================================
+PHASE 19: LOCALHOST TESTING PLAN
+============================================================
+
+Goal:
+Test the full platform locally before VPS deployment.
+
+Local Tools:
+1. XAMPP or local MySQL.
+2. Laravel local server.
+3. React dev server.
+4. Redis local or database queue.
+5. ngrok or Cloudflare Tunnel for Facebook webhook.
+6. Meta Developer test app.
+7. Facebook test Page.
+8. Stripe test mode.
+
+Testing Checklist:
+
+Authentication:
+- Register works.
+- Login works.
+- Logout works.
+- Role protection works.
+- Suspended user cannot login.
+
+Plans and Usage:
+- Plan displays correctly.
+- Usage limit displays correctly.
+- Usage increments after reply.
+- Reply blocked after limit exceeded.
+- Admin can extend limit.
+
+Facebook:
+- Facebook connect URL works.
+- OAuth callback works.
+- Page list loads.
+- Page connects.
+- Token stored encrypted.
+- Automation toggles work.
+
+Webhook:
+- Meta verifies webhook.
+- Message webhook received.
+- Comment webhook received.
+- Webhook logs saved.
+- Failed webhook visible.
+
+Message Automation:
+- Incoming message saved.
+- Conversation created.
+- Rule reply works.
+- AI fallback works.
+- Usage increments.
+- Human handover stops automation.
+
+Comment Automation:
+- Incoming comment saved.
+- Rule reply works.
+- AI fallback works.
+- Usage increments.
+- Failed reply logs.
+
+Payment:
+- Stripe test checkout works.
+- Payment success activates plan.
+- Limit extension works.
+- Invoice created.
+- Failed payment handled.
+
+Admin:
+- User management works.
+- Plan management works.
+- Payment management works.
+- Webhook logs visible.
+- AI logs visible.
+- Audit logs visible.
+
+Claude Code Prompt for Phase 19:
+
+Build Phase 19 only: local testing tools and test checklist support.
+
+Requirements:
+1. Add seeders for demo Super Admin, demo client, demo plans, demo usage limits and demo automation rules.
+2. Add a local testing command to simulate incoming Facebook message webhook payload.
+3. Add a local testing command to simulate Facebook comment webhook payload.
+4. Add test mode for AI reply if OPENAI_API_KEY is missing.
+5. Add clear README instructions for local setup using Laravel, MySQL, React and ngrok/Cloudflare Tunnel.
+6. Add testing checklist in README.
+7. Do not deploy yet.
+
+============================================================
+PHASE 20: VPS DEPLOYMENT PREPARATION
+============================================================
+
+Goal:
+Prepare the project for production deployment on VPS.
+
+VPS Requirements:
+1. Ubuntu server.
+2. Nginx.
+3. PHP required version.
+4. Composer.
+5. Node.js.
+6. MySQL.
+7. Redis.
+8. SSL certificate.
+9. Supervisor for queue workers.
+10. Cron for Laravel scheduler.
+11. Domain/subdomain.
+12. Environment variables.
+13. Storage permission.
+14. Database backup.
+15. Log rotation.
+
+Deployment Checklist:
+1. Pull code to VPS.
+2. Set .env production.
+3. Install composer dependencies.
+4. Install node dependencies.
+5. Build React frontend.
+6. Run migrations.
+7. Run seeders carefully.
+8. Configure Nginx.
+9. Configure SSL.
+10. Configure queue worker.
+11. Configure scheduler.
+12. Configure Meta webhook production URL.
+13. Configure payment webhook URL.
+14. Test login.
+15. Test Facebook connection.
+16. Test webhook.
+17. Test payment.
+
+Claude Code Prompt for Phase 20:
+
+Build Phase 20 only: VPS deployment preparation.
+
+Requirements:
+1. Create production deployment README for Ubuntu VPS.
+2. Include Nginx config example for Laravel API and React frontend.
+3. Include Supervisor config example for Laravel queue workers.
+4. Include cron instruction for Laravel scheduler.
+5. Include environment variable checklist.
+6. Include database backup instruction.
+7. Include SSL setup instruction using Certbot.
+8. Include post-deployment testing checklist.
+9. Do not change application logic unless needed for deployment readiness.
+
+============================================================
+3. FINAL DATABASE TABLE LIST
+============================================================
+
+Core:
+1. tenants
+2. users
+3. roles
+4. permissions
+5. role_user
+6. permission_role
+7. login_logs
+8. system_settings
+9. audit_logs
+
+Plans and Usage:
+10. plans
+11. subscriptions
+12. usage_limits
+13. usage_logs
+14. limit_extension_packages
+
+Payment:
+15. payments
+16. invoices
+
+Facebook:
+17. facebook_accounts
+18. facebook_pages
+19. webhook_events
+20. webhook_event_logs
+
+Messaging:
+21. customers
+22. conversations
+23. messages
+24. conversation_assignments
+25. internal_notes
+26. conversation_tags
+27. conversation_tag_pivot
+
+Comments:
+28. facebook_posts
+29. facebook_comments
+30. comment_replies
+
+Automation:
+31. automation_rules
+32. automation_rule_conditions
+33. automation_rule_actions
+34. reply_templates
+
+AI:
+35. knowledge_bases
+36. knowledge_base_items
+37. ai_prompts
+38. ai_reply_logs
+39. ai_provider_settings
+
+Notifications and Analytics:
+40. notifications
+41. email_logs
+42. daily_usage_stats
+43. monthly_usage_stats
+
+============================================================
+4. FINAL FEATURE CHECKLIST
+============================================================
+
+Must-have features:
+1. Multi-tenant user system.
+2. Super Admin panel.
+3. Client dashboard.
+4. User login and profile.
+5. Usage limit display.
+6. Manual limit extension by admin.
+7. Payment-based limit extension.
+8. Plan and subscription system.
+9. Facebook Page connection.
+10. Facebook webhook receiver.
+11. Message auto reply.
+12. Comment auto reply.
+13. Rule-based automation.
+14. Reply templates.
+15. AI knowledge base.
+16. AI reply.
+17. Human handover.
+18. Inbox management.
+19. Comments management.
+20. Analytics.
+21. Notifications.
+22. Audit logs.
+23. Webhook logs.
+24. AI logs.
+25. Payment logs.
+26. Localhost test mode.
+27. VPS deployment readiness.
+
+============================================================
+5. MASTER PROMPT FOR CLAUDE CODE
+============================================================
+
+Use this prompt before starting the project:
+
+You are a senior Laravel backend architect, MySQL database designer, React.js frontend engineer, UI/UX designer, API architect, SaaS product architect and security-focused full stack developer.
+
+We are building a multi-tenant SaaS/Agency platform for Facebook Page message and comment automation.
+
+Stack:
+- Backend: Laravel
+- Database: MySQL
+- Queue: Redis
+- Frontend: React.js
+- API: REST API
+- Auth: Laravel Sanctum or Passport
+- CSS: Tailwind CSS
+- Initial environment: localhost
+- Future deployment: VPS
+
+Main purpose:
+Many users/clients will connect their Facebook Pages and automate replies to Facebook Messenger messages and Facebook post comments. Super Admin will manage all users, plans, usage limits, payments, connected pages, webhook logs, AI logs and system settings.
+
+Important instruction:
+Build this project phase by phase. Do not build everything at once. Follow the BRD phases exactly. For each phase, create migrations, models, relationships, controllers, services, requests, resources, API routes, jobs, seeders and frontend pages where required.
+
+Core principles:
+1. Multi-tenant data isolation.
+2. Secure API design.
+3. Clean Laravel service architecture.
+4. Scalable MySQL database design.
+5. Queue-based webhook processing.
+6. Clear React UI structure.
+7. Usage limit must be checked before every auto reply.
+8. Facebook tokens and API keys must be encrypted.
+9. Super Admin must control all users.
+10. Client users must only access their own data.
+11. Build localhost first, then prepare for VPS deployment.
+
+Start with Phase 1 only. After finishing Phase 1, stop and explain what was built and what command I should run next.
+
+============================================================
+6. HOW TO WORK WITH CLAUDE CODE STEP BY STEP
+============================================================
+
+Do not paste the full BRD and say “build all”. Instead use this approach:
+
+Step 1:
+Paste the Master Prompt and Phase 1 prompt.
+
+Step 2:
+After Claude finishes Phase 1, run the project locally.
+
+Step 3:
+If there are errors, paste the exact error to Claude and ask it to fix only that error.
+
+Step 4:
+After Phase 1 is working, paste Phase 2 prompt.
+
+Step 5:
+Repeat this process until Phase 20.
+
+Important rule:
+Never move to the next phase until the current phase works properly.
+
+Recommended command style:
+“Now build Phase 2 only. Do not modify unrelated files unless necessary. Keep existing working features stable.”
+
+============================================================
+END OF DOCUMENT
+============================================================
