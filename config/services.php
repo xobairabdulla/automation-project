@@ -43,9 +43,17 @@ return [
     ],
 
     'payments' => [
+        'gateway' => env('PAYMENT_GATEWAY', 'stripe'),
         'stripe_key' => env('STRIPE_KEY'),
         'stripe_secret' => env('STRIPE_SECRET'),
         'stripe_webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
+    'sslcommerz' => [
+        'store_id' => env('SSLCOMMERZ_STORE_ID'),
+        'store_password' => env('SSLCOMMERZ_STORE_PASSWORD'),
+        'sandbox' => env('SSLCOMMERZ_SANDBOX', true),
+        'currency' => env('SSLCOMMERZ_CURRENCY', 'BDT'),
     ],
 
     'slack' => [

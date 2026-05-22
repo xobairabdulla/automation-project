@@ -7,6 +7,7 @@ use App\Models\LimitExtensionPackage;
 use App\Models\Payment;
 use App\Models\Plan;
 use App\Services\PaymentService;
+use App\Services\SslCommerzService;
 use App\Services\UsageLimitService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -43,18 +44,20 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function checkout(Request $request, Plan $plan, PaymentService $paymentService): RedirectResponse
-    {
+    public function checkout(
+        Request $request,
+        Plan $plan,
+        PaymentService $paymentService,
+        SslCommerzService $sslCommerzService,
+    ): RedirectResponse {
         $validated = $request->validate([
             'billing_cycle' => ['required', 'in:monthly,yearly'],
         ]);
 
         try {
-            $url = $paymentService->createSubscriptionCheckout(
-                $request->user(),
-                $plan,
-                $validated['billing_cycle']
-            );
+            $url = config('services.payments.gateway') === 'sslcommerz'
+                ? $sslCommerzService->createSubscriptionCheckout($request->user(), $plan, $validated['billing_cycle'])
+                : $paymentService->createSubscriptionCheckout($request->user(), $plan, $validated['billing_cycle']);
 
             return redirect($url);
         } catch (RuntimeException $e) {
@@ -62,10 +65,16 @@ class PaymentController extends Controller
         }
     }
 
-    public function extendCheckout(Request $request, LimitExtensionPackage $package, PaymentService $paymentService): RedirectResponse
-    {
+    public function extendCheckout(
+        Request $request,
+        LimitExtensionPackage $package,
+        PaymentService $paymentService,
+        SslCommerzService $sslCommerzService,
+    ): RedirectResponse {
         try {
-            $url = $paymentService->createExtensionCheckout($request->user(), $package);
+            $url = config('services.payments.gateway') === 'sslcommerz'
+                ? $sslCommerzService->createExtensionCheckout($request->user(), $package)
+                : $paymentService->createExtensionCheckout($request->user(), $package);
 
             return redirect($url);
         } catch (RuntimeException $e) {

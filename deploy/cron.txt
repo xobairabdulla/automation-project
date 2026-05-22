@@ -1,0 +1,2 @@
+# Laravel Scheduler — add to www-data crontab: sudo crontab -u www-data -e
+* * * * * cd /var/www/automation-project && php artisan schedule:run >> /dev/null 2>&1

@@ -5,16 +5,51 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Plan;
+use App\Models\Role;
 use App\Models\User;
 use App\Services\PaymentService;
 use App\Services\UsageLimitService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AdminUserController extends Controller
 {
+    public function store(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:8'],
+            'role' => ['required', 'string', 'exists:roles,slug'],
+            'status' => ['required', 'in:active,suspended,pending'],
+        ]);
+
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'status' => $validated['status'],
+        ]);
+
+        $role = Role::where('slug', $validated['role'])->firstOrFail();
+        $user->roles()->attach($role->id);
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'user.created',
+            'entity_type' => 'User',
+            'entity_id' => $user->id,
+            'new_values_json' => ['name' => $user->name, 'email' => $user->email, 'role' => $validated['role']],
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return back()->with('success', 'User created.');
+    }
+
     public function index(Request $request): Response
     {
         $users = User::query()

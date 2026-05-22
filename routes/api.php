@@ -4,13 +4,14 @@ use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Admin\AdminPlanController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminWebhookController;
-use App\Http\Controllers\Api\Facebook\FacebookWebhookController;
-use App\Http\Controllers\Client\PaymentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Client\ClientDashboardController;
 use App\Http\Controllers\Api\Facebook\FacebookConnectionController;
+use App\Http\Controllers\Api\Facebook\FacebookWebhookController;
 use App\Http\Controllers\Api\PlanController;
 use App\Http\Controllers\Api\UserUsageController;
+use App\Http\Controllers\Client\PaymentController;
+use App\Http\Controllers\Client\SslCommerzController;
 use App\Support\ApiResponse;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +20,7 @@ Route::prefix('webhooks')->middleware('throttle:120,1')->group(function () {
     Route::get('facebook', [FacebookWebhookController::class, 'verify'])->name('api.webhooks.facebook.verify');
     Route::post('facebook', [FacebookWebhookController::class, 'receive'])->name('api.webhooks.facebook.receive');
     Route::post('stripe', [PaymentController::class, 'webhook'])->name('api.webhooks.stripe');
+    Route::post('sslcommerz/ipn', [SslCommerzController::class, 'ipn'])->name('api.webhooks.sslcommerz.ipn');
 });
 
 Route::get('health', function () {

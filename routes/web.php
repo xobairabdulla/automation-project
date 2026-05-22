@@ -10,20 +10,22 @@ use App\Http\Controllers\Admin\AdminPlanController;
 use App\Http\Controllers\Admin\AdminSystemSettingController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminWebhookController;
-use App\Http\Controllers\Client\CommentsController;
-use App\Http\Controllers\Client\NotificationController;
-use App\Http\Controllers\Client\AnalyticsController;
 use App\Http\Controllers\Client\AiSettingsController;
-use App\Http\Controllers\Client\HumanHandoverController;
-use App\Http\Controllers\Client\InboxController;
-use App\Http\Controllers\Client\PaymentController;
-use App\Http\Controllers\Client\TeamController;
+use App\Http\Controllers\Client\AnalyticsController;
 use App\Http\Controllers\Client\AutomationRuleController;
 use App\Http\Controllers\Client\ClientDashboardController;
+use App\Http\Controllers\Client\CommentsController;
+use App\Http\Controllers\Client\HumanHandoverController;
+use App\Http\Controllers\Client\InboxController;
 use App\Http\Controllers\Client\KnowledgeBaseController;
+use App\Http\Controllers\Client\NotificationController;
+use App\Http\Controllers\Client\PaymentController;
 use App\Http\Controllers\Client\ReplyTemplateController;
+use App\Http\Controllers\Client\SslCommerzController;
+use App\Http\Controllers\Client\TeamController;
 use App\Http\Controllers\Facebook\FacebookPageController;
 use App\Services\UsageLimitService;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -34,6 +36,13 @@ Route::get('/', function () {
 // Team invitation acceptance — no auth required
 Route::get('/team/accept/{invitation:token}', [TeamController::class, 'showAccept'])->name('team.accept.show');
 Route::post('/team/accept/{invitation:token}', [TeamController::class, 'accept'])->name('team.accept');
+
+// SSLCommerz callbacks — POSTed by SSLCommerz gateway, no auth, no CSRF
+Route::prefix('billing/sslcommerz')->name('billing.sslcommerz.')->withoutMiddleware([VerifyCsrfToken::class])->group(function () {
+    Route::post('success', [SslCommerzController::class, 'success'])->name('success');
+    Route::post('fail', [SslCommerzController::class, 'fail'])->name('fail');
+    Route::post('cancel', [SslCommerzController::class, 'cancel'])->name('cancel');
+});
 
 Route::middleware(['auth', 'account.active'])->group(function () {
     Route::get('dashboard', [ClientDashboardController::class, 'index'])
@@ -94,6 +103,7 @@ Route::middleware(['auth', 'account.active'])->group(function () {
         Route::get('/success', [PaymentController::class, 'success'])->name('success');
         Route::get('/cancel', [PaymentController::class, 'cancel'])->name('cancel');
         Route::get('/history', [PaymentController::class, 'history'])->name('history');
+
     });
 
     Route::prefix('knowledge-base')->name('knowledge-base.')->group(function () {
@@ -138,6 +148,7 @@ Route::middleware(['auth', 'account.active'])->group(function () {
         Route::get('dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
         Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
+        Route::post('users', [AdminUserController::class, 'store'])->name('users.store');
         Route::get('users/{user}', [AdminUserController::class, 'show'])->name('users.show');
         Route::post('users/{user}/suspend', [AdminUserController::class, 'suspend'])->name('users.suspend');
         Route::post('users/{user}/activate', [AdminUserController::class, 'activate'])->name('users.activate');

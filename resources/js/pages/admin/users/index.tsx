@@ -1,11 +1,13 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AdminDashboardLayout from '@/layouts/admin-dashboard-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
 interface Role {
@@ -59,6 +61,25 @@ function statusVariant(status: string): 'default' | 'secondary' | 'destructive' 
 export default function UsersIndex({ users, filters }: UsersIndexProps) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [status, setStatus] = useState(filters.status ?? '');
+    const [createOpen, setCreateOpen] = useState(false);
+
+    const { data, setData, post, processing, errors, reset } = useForm({
+        name: '',
+        email: '',
+        password: '',
+        role: 'client-admin',
+        status: 'active',
+    });
+
+    function submitCreate(e: React.FormEvent) {
+        e.preventDefault();
+        post(route('admin.users.store'), {
+            onSuccess: () => {
+                setCreateOpen(false);
+                reset();
+            },
+        });
+    }
 
     useEffect(() => {
         const timeout = setTimeout(() => {
@@ -76,7 +97,87 @@ export default function UsersIndex({ users, filters }: UsersIndexProps) {
                         <h1 className="text-2xl font-semibold tracking-normal">User Management</h1>
                         <p className="text-muted-foreground text-sm">{users.total} total users</p>
                     </div>
+                    <Button onClick={() => setCreateOpen(true)}>Create User</Button>
                 </div>
+
+                <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Create User</DialogTitle>
+                        </DialogHeader>
+                        <form onSubmit={submitCreate} className="flex flex-col gap-4">
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="cu-name">Name</Label>
+                                <Input
+                                    id="cu-name"
+                                    value={data.name}
+                                    onChange={(e) => setData('name', e.target.value)}
+                                    placeholder="Full name"
+                                />
+                                {errors.name && <p className="text-destructive text-xs">{errors.name}</p>}
+                            </div>
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="cu-email">Email</Label>
+                                <Input
+                                    id="cu-email"
+                                    type="email"
+                                    value={data.email}
+                                    onChange={(e) => setData('email', e.target.value)}
+                                    placeholder="user@example.com"
+                                />
+                                {errors.email && <p className="text-destructive text-xs">{errors.email}</p>}
+                            </div>
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="cu-password">Password</Label>
+                                <Input
+                                    id="cu-password"
+                                    type="password"
+                                    value={data.password}
+                                    onChange={(e) => setData('password', e.target.value)}
+                                    placeholder="Min 8 characters"
+                                />
+                                {errors.password && <p className="text-destructive text-xs">{errors.password}</p>}
+                            </div>
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="cu-role">Role</Label>
+                                <Select value={data.role} onValueChange={(v) => setData('role', v)}>
+                                    <SelectTrigger id="cu-role">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="super-admin">Super Admin</SelectItem>
+                                        <SelectItem value="client-admin">Client Admin</SelectItem>
+                                        <SelectItem value="agent">Agent</SelectItem>
+                                        <SelectItem value="support-admin">Support Admin</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {errors.role && <p className="text-destructive text-xs">{errors.role}</p>}
+                            </div>
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="cu-status">Status</Label>
+                                <Select value={data.status} onValueChange={(v) => setData('status', v)}>
+                                    <SelectTrigger id="cu-status">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="active">Active</SelectItem>
+                                        <SelectItem value="pending">Pending</SelectItem>
+                                        <SelectItem value="suspended">Suspended</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {errors.status && <p className="text-destructive text-xs">{errors.status}</p>}
+                            </div>
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+                                    Cancel
+                                </Button>
+                                <Button type="submit" disabled={processing}>
+                                    {processing ? 'Creating...' : 'Create User'}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
 
                 <div className="flex flex-wrap gap-3">
                     <Input

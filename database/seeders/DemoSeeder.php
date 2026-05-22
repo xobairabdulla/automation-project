@@ -2,10 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\AutomationRule;
-use App\Models\AutomationRuleAction;
-use App\Models\AutomationRuleCondition;
-use App\Models\FacebookPage;
 use App\Models\Permission;
 use App\Models\Plan;
 use App\Models\Role;
@@ -62,7 +58,7 @@ class DemoSeeder extends Seeder
             $subscription = Subscription::firstOrCreate(
                 ['user_id' => $client->id, 'status' => 'active'],
                 [
-                    'tenant_id' => $client->id,
+                    'tenant_id' => $client->tenant_id,
                     'plan_id' => $growthPlan->id,
                     'billing_cycle' => 'monthly',
                     'starts_at' => now(),
@@ -73,7 +69,7 @@ class DemoSeeder extends Seeder
             UsageLimit::firstOrCreate(
                 ['user_id' => $client->id],
                 [
-                    'tenant_id' => $client->id,
+                    'tenant_id' => $client->tenant_id,
                     'subscription_id' => $subscription->id,
                     'message_reply_limit' => $growthPlan->message_reply_limit,
                     'message_reply_used' => 0,
@@ -89,70 +85,8 @@ class DemoSeeder extends Seeder
             );
         }
 
-        // Demo Facebook page (unconnected — for rule seeding)
-        $demoPage = FacebookPage::firstOrCreate(
-            ['user_id' => $client->id, 'page_id' => 'demo_page_123'],
-            [
-                'tenant_id' => $client->id,
-                'page_name' => 'Demo Business Page',
-                'page_access_token_encrypted' => 'demo_token',
-                'is_connected' => false,
-                'automation_enabled' => true,
-                'message_automation_enabled' => true,
-                'comment_automation_enabled' => true,
-            ]
-        );
-
-        // Demo automation rules
-        $rule = AutomationRule::firstOrCreate(
-            ['tenant_id' => $client->id, 'name' => 'Greeting Rule'],
-            [
-                'facebook_page_id' => $demoPage->id,
-                'channel' => 'message',
-                'priority' => 1,
-                'status' => 'active',
-            ]
-        );
-
-        AutomationRuleCondition::firstOrCreate(
-            ['automation_rule_id' => $rule->id, 'condition_type' => 'keyword'],
-            [
-                'keywords_json' => ['hello', 'hi', 'hey'],
-                'case_sensitive' => false,
-            ]
-        );
-
-        AutomationRuleAction::firstOrCreate(
-            ['automation_rule_id' => $rule->id, 'action_type' => 'send_reply'],
-            [
-                'reply_text' => 'Hello! Thanks for reaching out. How can we help you today?',
-            ]
-        );
-
-        $rule2 = AutomationRule::firstOrCreate(
-            ['tenant_id' => $client->id, 'name' => 'Pricing Rule'],
-            [
-                'facebook_page_id' => $demoPage->id,
-                'channel' => 'message',
-                'priority' => 2,
-                'status' => 'active',
-            ]
-        );
-
-        AutomationRuleCondition::firstOrCreate(
-            ['automation_rule_id' => $rule2->id, 'condition_type' => 'keyword'],
-            [
-                'keywords_json' => ['price', 'cost', 'how much', 'pricing'],
-                'case_sensitive' => false,
-            ]
-        );
-
-        AutomationRuleAction::firstOrCreate(
-            ['automation_rule_id' => $rule2->id, 'action_type' => 'send_reply'],
-            [
-                'reply_text' => 'Please visit our website or DM us for pricing details. We will get back to you shortly!',
-            ]
-        );
+        // Note: AutomationRules require a real connected FacebookPage.
+        // Connect a Facebook page via the UI first, then rules can be created.
 
         $this->command->info('Demo data seeded successfully.');
         $this->command->info('  Super Admin — admin@demo.com / password');

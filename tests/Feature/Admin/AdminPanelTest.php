@@ -23,6 +23,95 @@ class AdminPanelTest extends TestCase
         return $user;
     }
 
+    public function test_super_admin_can_create_user_via_web(): void
+    {
+        $admin = $this->makeSuperAdmin();
+        Role::firstOrCreate(['slug' => 'client-admin'], ['name' => 'Client Admin']);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.store'), [
+                'name' => 'New Client',
+                'email' => 'newclient@example.com',
+                'password' => 'password123',
+                'role' => 'client-admin',
+                'status' => 'active',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'newclient@example.com',
+            'name' => 'New Client',
+            'status' => 'active',
+        ]);
+
+        $created = User::where('email', 'newclient@example.com')->first();
+        $this->assertTrue($created->roles->where('slug', 'client-admin')->isNotEmpty());
+    }
+
+    public function test_create_user_validates_required_fields(): void
+    {
+        $admin = $this->makeSuperAdmin();
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.store'), [])
+            ->assertSessionHasErrors(['name', 'email', 'password', 'role', 'status']);
+    }
+
+    public function test_create_user_rejects_duplicate_email(): void
+    {
+        $admin = $this->makeSuperAdmin();
+        User::factory()->create(['email' => 'taken@example.com']);
+        Role::firstOrCreate(['slug' => 'client-admin'], ['name' => 'Client Admin']);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.store'), [
+                'name' => 'Dup',
+                'email' => 'taken@example.com',
+                'password' => 'password123',
+                'role' => 'client-admin',
+                'status' => 'active',
+            ])
+            ->assertSessionHasErrors('email');
+    }
+
+    public function test_create_user_audit_log_is_written(): void
+    {
+        $admin = $this->makeSuperAdmin();
+        Role::firstOrCreate(['slug' => 'client-admin'], ['name' => 'Client Admin']);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.store'), [
+                'name' => 'Audit Test',
+                'email' => 'audituser@example.com',
+                'password' => 'password123',
+                'role' => 'client-admin',
+                'status' => 'active',
+            ]);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'user_id' => $admin->id,
+            'action' => 'user.created',
+            'entity_type' => 'User',
+        ]);
+    }
+
+    public function test_non_admin_cannot_create_user(): void
+    {
+        $client = User::factory()->create(['status' => 'active']);
+        $role = Role::firstOrCreate(['slug' => 'client-admin'], ['name' => 'Client Admin']);
+        $client->roles()->attach($role);
+
+        $this->actingAs($client)
+            ->post(route('admin.users.store'), [
+                'name' => 'Hacker',
+                'email' => 'hacker@example.com',
+                'password' => 'password123',
+                'role' => 'client-admin',
+                'status' => 'active',
+            ])
+            ->assertForbidden();
+    }
+
     public function test_non_admin_cannot_access_admin_api(): void
     {
         $user = User::factory()->create(['status' => 'active']);
