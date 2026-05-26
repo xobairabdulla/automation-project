@@ -37,9 +37,13 @@ return [
     ],
 
     'ai' => [
-        'provider' => env('AI_PROVIDER', 'openai'),
+        'provider' => env('AI_PROVIDER', 'anthropic'),
+        'anthropic_api_key' => env('ANTHROPIC_API_KEY'),
+        'anthropic_model' => env('ANTHROPIC_MODEL', 'claude-opus-4-7'),
         'openai_api_key' => env('OPENAI_API_KEY'),
         'openai_model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
+        'gemini_api_key' => env('GEMINI_API_KEY'),
+        'gemini_model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
     ],
 
     'payments' => [

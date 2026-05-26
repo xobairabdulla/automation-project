@@ -83,6 +83,7 @@ class FacebookPageController extends Controller
     public function connectPage(Request $request, FacebookPage $page): RedirectResponse
     {
         $this->authorizePageAccess($request->user()->id, $page);
+        app(FacebookService::class)->subscribePageToWebhooks($page);
         $page->update(['is_connected' => true]);
 
         return back()->with('success', "Page \"{$page->page_name}\" connected.");

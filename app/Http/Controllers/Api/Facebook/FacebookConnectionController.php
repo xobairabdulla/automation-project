@@ -49,6 +49,7 @@ class FacebookConnectionController extends Controller
     public function connectPage(Request $request, FacebookPage $page): JsonResponse
     {
         abort_if($page->user_id !== $request->user()->id, 403);
+        app(FacebookService::class)->subscribePageToWebhooks($page);
         $page->update(['is_connected' => true]);
 
         return ApiResponse::success(null, 'Page connected');

@@ -30,6 +30,7 @@ class AIReplyService
         $systemPrompt = $this->buildSystemPrompt($knowledgeBase, $aiPrompt);
         $model = $this->resolveModel();
         $apiKey = $this->resolveApiKey();
+        $provider = $this->resolveProvider();
 
         if (! $apiKey) {
             if (config('app.env') === 'local') {
@@ -41,6 +42,121 @@ class AIReplyService
             return $this->logAndReturn($page, $conversationId, $facebookCommentId, $systemPrompt, null, $model, 0, 'failed', 'No API key configured.');
         }
 
+        return match ($provider) {
+            'anthropic' => $this->callAnthropic($page, $question, $conversationId, $facebookCommentId, $systemPrompt, $model, $apiKey, $aiPrompt),
+            'gemini' => $this->callGemini($page, $question, $conversationId, $facebookCommentId, $systemPrompt, $model, $apiKey, $aiPrompt),
+            default => $this->callOpenAi($page, $question, $conversationId, $facebookCommentId, $systemPrompt, $model, $apiKey, $aiPrompt),
+        };
+    }
+
+    private function callAnthropic(
+        FacebookPage $page,
+        string $question,
+        ?int $conversationId,
+        ?int $facebookCommentId,
+        string $systemPrompt,
+        string $model,
+        string $apiKey,
+        ?AiPrompt $aiPrompt,
+    ): ?string {
+        try {
+            $response = Http::withHeaders([
+                'x-api-key' => $apiKey,
+                'anthropic-version' => '2023-06-01',
+            ])
+                ->timeout(30)
+                ->post('https://api.anthropic.com/v1/messages', [
+                    'model' => $model,
+                    'max_tokens' => $this->maxTokens($aiPrompt),
+                    'system' => $systemPrompt,
+                    'messages' => [
+                        ['role' => 'user', 'content' => $question],
+                    ],
+                ]);
+
+            if ($response->failed()) {
+                $error = $response->json('error.message', 'Anthropic API error');
+                Log::error('AIReplyService: Anthropic API failed', ['page_id' => $page->id, 'error' => $error]);
+
+                return $this->logAndReturn($page, $conversationId, $facebookCommentId, $systemPrompt, null, $model, 0, 'failed', $error);
+            }
+
+            $replyText = $response->json('content.0.text', '');
+            $tokensUsed = $response->json('usage.input_tokens', 0) + $response->json('usage.output_tokens', 0);
+
+            if (str_contains($replyText, self::UNKNOWN_SENTINEL)) {
+                return $this->logAndReturn($page, $conversationId, $facebookCommentId, $systemPrompt, $replyText, $model, $tokensUsed, 'unknown_answer', null);
+            }
+
+            $this->logAndReturn($page, $conversationId, $facebookCommentId, $systemPrompt, $replyText, $model, $tokensUsed, 'success', null);
+
+            return trim($replyText);
+        } catch (\Throwable $e) {
+            Log::error('AIReplyService: Anthropic exception', ['page_id' => $page->id, 'error' => $e->getMessage()]);
+
+            return $this->logAndReturn($page, $conversationId, $facebookCommentId, $systemPrompt, null, $model, 0, 'failed', $e->getMessage());
+        }
+    }
+
+    private function callGemini(
+        FacebookPage $page,
+        string $question,
+        ?int $conversationId,
+        ?int $facebookCommentId,
+        string $systemPrompt,
+        string $model,
+        string $apiKey,
+        ?AiPrompt $aiPrompt,
+    ): ?string {
+        try {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+
+            $response = Http::timeout(30)->post($url, [
+                'system_instruction' => [
+                    'parts' => [['text' => $systemPrompt]],
+                ],
+                'contents' => [
+                    ['role' => 'user', 'parts' => [['text' => $question]]],
+                ],
+                'generationConfig' => [
+                    'maxOutputTokens' => $this->maxTokens($aiPrompt),
+                ],
+            ]);
+
+            if ($response->failed()) {
+                $error = $response->json('error.message', 'Gemini API error');
+                Log::error('AIReplyService: Gemini API failed', ['page_id' => $page->id, 'error' => $error]);
+
+                return $this->logAndReturn($page, $conversationId, $facebookCommentId, $systemPrompt, null, $model, 0, 'failed', $error);
+            }
+
+            $replyText = $response->json('candidates.0.content.parts.0.text', '');
+            $tokensUsed = $response->json('usageMetadata.totalTokenCount', 0);
+
+            if (str_contains($replyText, self::UNKNOWN_SENTINEL)) {
+                return $this->logAndReturn($page, $conversationId, $facebookCommentId, $systemPrompt, $replyText, $model, $tokensUsed, 'unknown_answer', null);
+            }
+
+            $this->logAndReturn($page, $conversationId, $facebookCommentId, $systemPrompt, $replyText, $model, $tokensUsed, 'success', null);
+
+            return trim($replyText);
+        } catch (\Throwable $e) {
+            Log::error('AIReplyService: Gemini exception', ['page_id' => $page->id, 'error' => $e->getMessage()]);
+
+            return $this->logAndReturn($page, $conversationId, $facebookCommentId, $systemPrompt, null, $model, 0, 'failed', $e->getMessage());
+        }
+    }
+
+    private function callOpenAi(
+        FacebookPage $page,
+        string $question,
+        ?int $conversationId,
+        ?int $facebookCommentId,
+        string $systemPrompt,
+        string $model,
+        string $apiKey,
+        ?AiPrompt $aiPrompt,
+    ): ?string {
         try {
             $response = Http::withToken($apiKey)
                 ->timeout(15)
@@ -55,7 +171,7 @@ class AIReplyService
 
             if ($response->failed()) {
                 $error = $response->json('error.message', 'OpenAI API error');
-                Log::error('AIReplyService: API failed', ['page_id' => $page->id, 'error' => $error]);
+                Log::error('AIReplyService: OpenAI API failed', ['page_id' => $page->id, 'error' => $error]);
 
                 return $this->logAndReturn($page, $conversationId, $facebookCommentId, $systemPrompt, null, $model, 0, 'failed', $error);
             }
@@ -71,7 +187,7 @@ class AIReplyService
 
             return trim($replyText);
         } catch (\Throwable $e) {
-            Log::error('AIReplyService: exception', ['page_id' => $page->id, 'error' => $e->getMessage()]);
+            Log::error('AIReplyService: OpenAI exception', ['page_id' => $page->id, 'error' => $e->getMessage()]);
 
             return $this->logAndReturn($page, $conversationId, $facebookCommentId, $systemPrompt, null, $model, 0, 'failed', $e->getMessage());
         }
@@ -106,11 +222,28 @@ SAFETY RULES (follow strictly):
 PROMPT;
     }
 
+    private function resolveProvider(): string
+    {
+        $setting = AiProviderSetting::active();
+
+        return $setting?->provider_name ?? config('services.ai.provider', 'anthropic');
+    }
+
     private function resolveModel(): string
     {
         $setting = AiProviderSetting::active();
 
-        return $setting?->model ?? config('services.ai.openai_model', 'gpt-4o-mini');
+        if ($setting?->model) {
+            return $setting->model;
+        }
+
+        $provider = $this->resolveProvider();
+
+        return match ($provider) {
+            'anthropic' => config('services.ai.anthropic_model', 'claude-opus-4-7'),
+            'gemini' => config('services.ai.gemini_model', 'gemini-1.5-flash'),
+            default => config('services.ai.openai_model', 'gpt-4o-mini'),
+        };
     }
 
     private function resolveApiKey(): ?string
@@ -121,7 +254,13 @@ PROMPT;
             return $setting->api_key_encrypted;
         }
 
-        return config('services.ai.openai_api_key') ?: null;
+        $provider = $this->resolveProvider();
+
+        return match ($provider) {
+            'anthropic' => config('services.ai.anthropic_api_key') ?: null,
+            'gemini' => config('services.ai.gemini_api_key') ?: null,
+            default => config('services.ai.openai_api_key') ?: null,
+        };
     }
 
     private function maxTokens(?AiPrompt $aiPrompt): int

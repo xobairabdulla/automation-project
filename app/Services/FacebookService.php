@@ -34,7 +34,7 @@ class FacebookService
         $params = http_build_query([
             'client_id' => $this->appId,
             'redirect_uri' => $this->redirectUri,
-            'scope' => 'pages_show_list,pages_read_engagement,pages_messaging,pages_manage_posts,pages_read_user_content',
+            'scope' => 'pages_show_list,pages_read_engagement,pages_messaging,pages_manage_posts,pages_read_user_content,pages_manage_metadata',
             'response_type' => 'code',
             'state' => $state,
         ]);
@@ -103,6 +103,17 @@ class FacebookService
         return Http::withToken($pageAccessToken)->post("{$this->graphBase}/{$commentId}/comments", [
             'message' => $text,
         ]);
+    }
+
+    public function subscribePageToWebhooks(FacebookPage $page): void
+    {
+        $response = Http::asForm()
+            ->withToken($page->page_access_token_encrypted)
+            ->post("{$this->graphBase}/{$page->page_id}/subscribed_apps", [
+                'subscribed_fields' => 'messages,messaging_postbacks,feed',
+            ]);
+
+        $this->assertSuccess($response, 'Failed to subscribe page to Facebook webhooks.');
     }
 
     public function saveAccountAndPages(User $user, string $userAccessToken, ?int $expiresIn = null): FacebookAccount

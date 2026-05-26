@@ -24,7 +24,12 @@
       "Bash(awk -F: '{print $1}')",
       "Bash(sed -n '14,35p' app/Models/UsageLimit.php)",
       "Bash(sed -n '14,30p' app/Models/AutomationRule.php)",
-      "Bash(cd C:\\\\Users\\\\xobai\\\\Documents\\\\Claude\\\\Projects\\\\automation-project *)"
+      "Bash(cd C:\\\\Users\\\\xobai\\\\Documents\\\\Claude\\\\Projects\\\\automation-project *)",
+      "Bash(curl -s \"https://excessive-vertical-camcorders-requests.trycloudflare.com/api/webhooks/facebook?hub.mode=subscribe&hub.verify_token=fb_webhook_verify_2026_secret&hub.challenge=test123\")",
+      "Bash(composer show *)",
+      "Bash(vendor/bin/pint database/seeders/AutomationSeeder.php --format agent)",
+      "Bash(Get-ChildItem -Recurse resources/js/pages -Filter \"*.tsx\")",
+      "Bash(Select-Object -ExpandProperty FullName)"
     ]
   }
 }

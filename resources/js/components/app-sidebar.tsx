@@ -14,6 +14,7 @@ import {
     DollarSign,
     Facebook,
     FileText,
+    HelpCircle,
     Inbox,
     LayoutGrid,
     MessageSquare,
@@ -49,6 +50,7 @@ export function AppSidebar() {
             icon: Bell,
         },
         { title: 'Billing', url: '/billing', icon: CreditCard },
+        { title: 'User Guide', url: '/guide', icon: HelpCircle },
         ...(isSuperAdmin
             ? [
                   { title: 'Admin Dashboard', url: '/admin/dashboard', icon: Shield },

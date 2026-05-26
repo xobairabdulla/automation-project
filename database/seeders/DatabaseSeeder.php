@@ -59,5 +59,6 @@ class DatabaseSeeder extends Seeder
         $user->roles()->syncWithoutDetaching([$roles['super-admin']->id]);
 
         $this->call(DemoSeeder::class);
+        $this->call(AutomationSeeder::class);
     }
 }

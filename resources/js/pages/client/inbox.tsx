@@ -244,12 +244,12 @@ export default function InboxPage({ pages, tags: initialTags }: Props) {
                                 />
                             </div>
                             {pages.length > 0 && (
-                                <Select value={pageId} onValueChange={setPageId}>
+                                <Select value={pageId || 'all'} onValueChange={(value) => setPageId(value === 'all' ? '' : value)}>
                                     <SelectTrigger className="w-28 h-9 text-xs">
                                         <SelectValue placeholder="All pages" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">All pages</SelectItem>
+                                        <SelectItem value="all">All pages</SelectItem>
                                         {pages.map((p) => (
                                             <SelectItem key={p.id} value={String(p.id)}>{p.page_name}</SelectItem>
                                         ))}

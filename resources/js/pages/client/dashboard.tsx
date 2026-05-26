@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ClientDashboardLayout from '@/layouts/client-dashboard-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
+import { BarChart3, BookOpen, Bot, Facebook, Inbox, MessageCircle, ThumbsUp, UserCheck, XCircle, Zap } from 'lucide-react';
 
 interface Plan {
     name: string;
@@ -65,31 +66,47 @@ function usagePct(used: number, limit: number) {
     return Math.min(100, Math.round((used / limit) * 100));
 }
 
-function MiniUsageBar({ label, used, limit }: { label: string; used: number; limit: number }) {
+function UsageBar({ label, used, limit, color }: { label: string; used: number; limit: number; color: string }) {
     const pct = usagePct(used, limit);
-    const color = pct >= 100 ? 'bg-red-600' : pct >= 80 ? 'bg-amber-500' : 'bg-emerald-600';
+    const barColor = pct >= 100 ? 'bg-red-500' : pct >= 80 ? 'bg-amber-500' : color;
     return (
-        <div className="space-y-1">
+        <div className="space-y-1.5">
             <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">{label}</span>
-                <span className="font-medium">{used.toLocaleString()} / {limit.toLocaleString()}</span>
+                <span className="text-muted-foreground font-medium">{label}</span>
+                <span className="font-semibold">
+                    {used.toLocaleString()}{' '}
+                    <span className="text-muted-foreground font-normal">/ {limit.toLocaleString()}</span>
+                </span>
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${pct}%` }} />
             </div>
         </div>
     );
 }
 
-function StatCard({ title, value, sub }: { title: string; value: number | string; sub?: string }) {
+interface StatCardProps {
+    title: string;
+    value: number | string;
+    sub?: string;
+    icon: React.ReactNode;
+    gradient: string;
+}
+
+function StatCard({ title, value, sub, icon, gradient }: StatCardProps) {
     return (
-        <Card>
-            <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p className="text-2xl font-bold">{typeof value === 'number' ? value.toLocaleString() : value}</p>
-                {sub && <p className="text-muted-foreground mt-1 text-xs">{sub}</p>}
+        <Card className="overflow-hidden border-0 shadow-md">
+            <CardContent className="p-0">
+                <div className={`p-4 ${gradient}`}>
+                    <div className="flex items-center justify-between">
+                        <div className="rounded-xl bg-white/20 p-2.5 backdrop-blur-sm">{icon}</div>
+                        <p className="text-3xl font-bold text-white">{typeof value === 'number' ? value.toLocaleString() : value}</p>
+                    </div>
+                    <div className="mt-3">
+                        <p className="text-sm font-semibold text-white/90">{title}</p>
+                        {sub && <p className="text-xs text-white/70 mt-0.5">{sub}</p>}
+                    </div>
+                </div>
             </CardContent>
         </Card>
     );
@@ -99,24 +116,33 @@ function alertVariant(type: AlertItem['type']): 'default' | 'destructive' {
     return type === 'error' ? 'destructive' : 'default';
 }
 
+const quickActions = [
+    { label: 'Facebook Pages', href: '/facebook/pages', icon: Facebook, color: 'bg-blue-500 hover:bg-blue-600' },
+    { label: 'Inbox', href: '/inbox', icon: Inbox, color: 'bg-indigo-500 hover:bg-indigo-600' },
+    { label: 'Automation Rules', href: '/automation-rules', icon: Zap, color: 'bg-amber-500 hover:bg-amber-600' },
+    { label: 'Knowledge Base', href: '/knowledge-base', icon: BookOpen, color: 'bg-emerald-500 hover:bg-emerald-600' },
+    { label: 'Analytics', href: '/analytics', icon: BarChart3, color: 'bg-purple-500 hover:bg-purple-600' },
+    { label: 'User Guide', href: '/guide', icon: UserCheck, color: 'bg-rose-500 hover:bg-rose-600' },
+];
+
 export default function ClientDashboard({ subscription, usage, stats, alerts, recentActivity }: DashboardProps) {
     return (
         <ClientDashboardLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
-            <div className="flex flex-1 flex-col gap-4 p-4">
+            <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
 
-                <div className="flex flex-wrap items-start justify-between gap-3">
+                {/* Header */}
+                <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <h1 className="text-2xl font-semibold tracking-normal">Dashboard</h1>
-                        <p className="text-muted-foreground text-sm">Your Facebook automation overview.</p>
+                        <h1 className="text-2xl font-bold tracking-tight">Welcome back! 👋</h1>
+                        <p className="text-muted-foreground text-sm mt-0.5">Here's your Facebook automation overview for today.</p>
                     </div>
-                    <div className="flex gap-2">
-                        <Button asChild variant="outline" size="sm">
-                            <Link href="/usage-limits">View Limits</Link>
-                        </Button>
-                    </div>
+                    <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700">
+                        <Link href="/usage-limits">View Usage Limits</Link>
+                    </Button>
                 </div>
 
+                {/* Alerts */}
                 {alerts.length > 0 && (
                     <div className="space-y-2">
                         {alerts.map((alert, i) => (
@@ -127,57 +153,104 @@ export default function ClientDashboard({ subscription, usage, stats, alerts, re
                     </div>
                 )}
 
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <StatCard title="Connected Pages" value={stats.connected_pages} sub={`of ${usage.connected_page_limit} allowed`} />
-                    <StatCard title="Messages Today" value={stats.messages_today} />
-                    <StatCard title="Comments Today" value={stats.comments_today} />
-                    <StatCard title="AI Replies Today" value={stats.ai_replies_today} />
-                    <StatCard title="Failed Replies Today" value={stats.failed_replies_today} />
-                    <StatCard title="Human Handovers Today" value={stats.human_handovers_today} />
+                {/* Stat Cards */}
+                <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                    <StatCard
+                        title="Connected Pages"
+                        value={stats.connected_pages}
+                        sub={`of ${usage.connected_page_limit} allowed`}
+                        icon={<Facebook className="h-5 w-5 text-white" />}
+                        gradient="bg-gradient-to-br from-blue-500 to-blue-700"
+                    />
+                    <StatCard
+                        title="Messages Today"
+                        value={stats.messages_today}
+                        icon={<MessageCircle className="h-5 w-5 text-white" />}
+                        gradient="bg-gradient-to-br from-violet-500 to-violet-700"
+                    />
+                    <StatCard
+                        title="Comments Today"
+                        value={stats.comments_today}
+                        icon={<ThumbsUp className="h-5 w-5 text-white" />}
+                        gradient="bg-gradient-to-br from-emerald-500 to-emerald-700"
+                    />
+                    <StatCard
+                        title="AI Replies Today"
+                        value={stats.ai_replies_today}
+                        icon={<Bot className="h-5 w-5 text-white" />}
+                        gradient="bg-gradient-to-br from-amber-500 to-orange-600"
+                    />
+                    <StatCard
+                        title="Failed Replies"
+                        value={stats.failed_replies_today}
+                        icon={<XCircle className="h-5 w-5 text-white" />}
+                        gradient="bg-gradient-to-br from-red-500 to-rose-700"
+                    />
+                    <StatCard
+                        title="Human Handovers"
+                        value={stats.human_handovers_today}
+                        icon={<UserCheck className="h-5 w-5 text-white" />}
+                        gradient="bg-gradient-to-br from-pink-500 to-pink-700"
+                    />
                 </div>
 
+                {/* Plan + Activity */}
                 <div className="grid gap-4 md:grid-cols-2">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                            <CardTitle>Current Plan</CardTitle>
-                            <Badge variant="secondary">{subscription.status}</Badge>
+                    <Card className="shadow-sm">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                            <CardTitle className="text-base font-semibold">Current Plan</CardTitle>
+                            <Badge
+                                className={
+                                    subscription.status === 'active'
+                                        ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
+                                        : 'bg-red-100 text-red-700 hover:bg-red-100'
+                                }
+                            >
+                                {subscription.status}
+                            </Badge>
                         </CardHeader>
-                        <CardContent className="space-y-3">
+                        <CardContent className="space-y-4">
                             <div className="flex items-baseline gap-2">
-                                <span className="text-xl font-bold">{subscription.plan.name}</span>
+                                <span className="text-2xl font-bold">{subscription.plan.name}</span>
                                 <span className="text-muted-foreground text-sm">${subscription.plan.monthly_price}/mo</span>
                             </div>
-                            <div className="text-sm text-muted-foreground">
+                            <p className="text-xs text-muted-foreground capitalize">
                                 {subscription.billing_cycle} billing
                                 {subscription.ends_at && (
                                     <> · expires {new Date(subscription.ends_at).toLocaleDateString()}</>
                                 )}
+                                {' '}· resets {new Date(usage.reset_at).toLocaleDateString()}
+                            </p>
+                            <div className="space-y-3 pt-1">
+                                <UsageBar label="Message Replies" used={usage.message_reply_used} limit={usage.message_reply_limit} color="bg-violet-500" />
+                                <UsageBar label="Comment Replies" used={usage.comment_reply_used} limit={usage.comment_reply_limit} color="bg-emerald-500" />
+                                <UsageBar label="AI Replies" used={usage.ai_reply_used} limit={usage.ai_reply_limit} color="bg-amber-500" />
                             </div>
-                            <div className="space-y-2 pt-1">
-                                <MiniUsageBar label="Message Replies" used={usage.message_reply_used} limit={usage.message_reply_limit} />
-                                <MiniUsageBar label="Comment Replies" used={usage.comment_reply_used} limit={usage.comment_reply_limit} />
-                                <MiniUsageBar label="AI Replies" used={usage.ai_reply_used} limit={usage.ai_reply_limit} />
-                            </div>
-                            <div className="flex gap-2 pt-1">
-                                <Button asChild variant="outline" size="sm">
-                                    <Link href="/usage-limits">Usage Details</Link>
-                                </Button>
-                            </div>
+                            <Button asChild variant="outline" size="sm" className="mt-1 w-full">
+                                <Link href="/billing">Manage Billing</Link>
+                            </Button>
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Recent Activity</CardTitle>
+                    <Card className="shadow-sm">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base font-semibold">Recent Activity</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
                             {recentActivity.length === 0 ? (
-                                <p className="px-6 py-4 text-sm text-muted-foreground">No activity yet.</p>
+                                <div className="flex flex-col items-center justify-center py-10 text-center">
+                                    <MessageCircle className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                                    <p className="text-sm text-muted-foreground">No activity yet.</p>
+                                    <p className="text-xs text-muted-foreground mt-1">Connect a page and send a message to get started.</p>
+                                </div>
                             ) : (
                                 <ul className="divide-y">
                                     {recentActivity.map((log) => (
-                                        <li key={log.id} className="flex items-center justify-between px-6 py-2 text-sm">
-                                            <span>{log.type.replaceAll('_', ' ')}</span>
+                                        <li key={log.id} className="flex items-center justify-between px-6 py-2.5 text-sm">
+                                            <div className="flex items-center gap-2">
+                                                <span className="h-2 w-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                                                <span className="capitalize">{log.type.replaceAll('_', ' ')}</span>
+                                            </div>
                                             <span className="text-muted-foreground text-xs">
                                                 {new Date(log.created_at).toLocaleString()}
                                             </span>
@@ -189,20 +262,24 @@ export default function ClientDashboard({ subscription, usage, stats, alerts, re
                     </Card>
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Quick Actions</CardTitle>
+                {/* Quick Actions */}
+                <Card className="shadow-sm">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base font-semibold">Quick Actions</CardTitle>
                     </CardHeader>
-                    <CardContent className="flex flex-wrap gap-2">
-                        <Button asChild variant="outline">
-                            <Link href="/usage-limits">Usage & Limits</Link>
-                        </Button>
-                        <Button asChild variant="outline">
-                            <Link href="/facebook/pages">Facebook Pages</Link>
-                        </Button>
-                        <Button variant="outline" disabled>Automation Rules</Button>
-                        <Button variant="outline" disabled>AI Knowledge Base</Button>
-                        <Button variant="outline" disabled>Inbox</Button>
+                    <CardContent>
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
+                            {quickActions.map(({ label, href, icon: Icon, color }) => (
+                                <Link
+                                    key={href}
+                                    href={href}
+                                    className={`flex flex-col items-center gap-2 rounded-xl p-4 text-white transition-all hover:scale-105 hover:shadow-md ${color}`}
+                                >
+                                    <Icon className="h-6 w-6" />
+                                    <span className="text-xs font-medium text-center leading-tight">{label}</span>
+                                </Link>
+                            ))}
+                        </div>
                     </CardContent>
                 </Card>
             </div>

@@ -24,6 +24,7 @@ use App\Http\Controllers\Client\ReplyTemplateController;
 use App\Http\Controllers\Client\SslCommerzController;
 use App\Http\Controllers\Client\TeamController;
 use App\Http\Controllers\Facebook\FacebookPageController;
+use App\Http\Controllers\GuideController;
 use App\Services\UsageLimitService;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
@@ -48,6 +49,10 @@ Route::middleware(['auth', 'account.active'])->group(function () {
     Route::get('dashboard', [ClientDashboardController::class, 'index'])
         ->middleware('role:client-admin|agent|support-admin|super-admin')
         ->name('dashboard');
+
+    Route::get('guide', [GuideController::class, 'index'])
+        ->middleware('role:client-admin|agent|support-admin|super-admin')
+        ->name('guide');
 
     Route::get('usage-limits', function (UsageLimitService $usageLimitService) {
         $user = request()->user();
