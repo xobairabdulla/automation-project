@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Services\OtpService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,9 +14,8 @@ use Inertia\Response;
 
 class AuthenticatedSessionController extends Controller
 {
-    /**
-     * Show the login page.
-     */
+    public function __construct(private readonly OtpService $otpService) {}
+
     public function create(Request $request): Response
     {
         return Inertia::render('auth/login', [
@@ -24,21 +24,28 @@ class AuthenticatedSessionController extends Controller
         ]);
     }
 
-    /**
-     * Handle an incoming authentication request.
-     */
     public function store(LoginRequest $request): RedirectResponse
     {
-        $request->authenticate();
+        // Validate credentials without fully logging in
+        $request->authenticateForOtp();
 
-        $request->session()->regenerate();
+        $user = $request->resolvedUser();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // Store user ID in session for OTP step
+        $request->session()->put('otp_pending_user_id', $user->id);
+        $request->session()->put('otp_pending_remember', $request->boolean('remember'));
+
+        $error = $this->otpService->send($user->email);
+
+        if ($error) {
+            $request->session()->forget(['otp_pending_user_id', 'otp_pending_remember']);
+
+            return back()->withErrors(['email' => $error]);
+        }
+
+        return redirect()->route('login.otp');
     }
 
-    /**
-     * Destroy an authenticated session.
-     */
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();

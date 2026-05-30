@@ -100,6 +100,10 @@ class FacebookWebhookController extends Controller
         if (! empty($entry['messaging'])) {
             $msg = $entry['messaging'][0] ?? [];
 
+            if ($msg['message']['is_echo'] ?? false) {
+                return 'messaging_echo';
+            }
+
             return isset($msg['message']) ? 'message' : 'messaging_other';
         }
 

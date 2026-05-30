@@ -115,20 +115,7 @@ class PaymentService
             return;
         }
 
-        $user = $payment->user;
-        $usageLimit = $usageLimitService->currentUsageLimit($user);
-
-        if ($package->message_extra > 0) {
-            $usageLimit->increment('message_reply_limit', $package->message_extra);
-        }
-
-        if ($package->comment_extra > 0) {
-            $usageLimit->increment('comment_reply_limit', $package->comment_extra);
-        }
-
-        if ($package->ai_extra > 0) {
-            $usageLimit->increment('ai_reply_limit', $package->ai_extra);
-        }
+        $usageLimitService->fulfillPackagePurchase($payment->user, $package);
 
         $payment->update(['status' => 'completed', 'paid_at' => now()]);
     }

@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ClientDashboardLayout from '@/layouts/client-dashboard-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { Mail, Trash2, UserMinus, Users } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useState } from 'react';
 
 interface Role {
@@ -39,6 +40,10 @@ interface TeamProps {
     memberCount: number;
 }
 
+interface SharedProps {
+    flash?: { success?: string; error?: string };
+}
+
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Team', href: '/team' }];
 
 function roleLabel(role: string): string {
@@ -47,6 +52,7 @@ function roleLabel(role: string): string {
 }
 
 export default function Team({ members, invitations, memberLimit, memberCount }: TeamProps) {
+    const { flash } = usePage<SharedProps>().props;
     const [inviteOpen, setInviteOpen] = useState(false);
 
     const inviteForm = useForm({ email: '', role: 'agent' });
@@ -79,6 +85,9 @@ export default function Team({ members, invitations, memberLimit, memberCount }:
         <ClientDashboardLayout breadcrumbs={breadcrumbs}>
             <Head title="Team" />
             <div className="flex flex-1 flex-col gap-4 p-4">
+                {flash?.success && <Alert><AlertDescription>{flash.success}</AlertDescription></Alert>}
+                {flash?.error && <Alert variant="destructive"><AlertDescription>{flash.error}</AlertDescription></Alert>}
+
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h1 className="text-2xl font-semibold tracking-normal">Team</h1>
@@ -113,6 +122,9 @@ export default function Team({ members, invitations, memberLimit, memberCount }:
                                     />
                                     {inviteForm.errors.email && (
                                         <p className="mt-1 text-xs text-red-500">{inviteForm.errors.email}</p>
+                                    )}
+                                    {inviteForm.errors.invite && (
+                                        <p className="mt-1 text-xs text-red-500">{inviteForm.errors.invite}</p>
                                     )}
                                 </div>
                                 <div>

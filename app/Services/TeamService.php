@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Notifications\TeamInvitationNotification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -41,7 +42,9 @@ class TeamService
             'expires_at' => now()->addDays(7),
         ]);
 
-        $owner->notify(new TeamInvitationNotification($invitation, $owner));
+        // Mail goes to the invited person's email
+        Notification::route('mail', $invitation->email)
+            ->notify(new TeamInvitationNotification($invitation, $owner));
 
         EmailLog::record(
             toEmail: $invitation->email,

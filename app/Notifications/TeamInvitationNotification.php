@@ -19,7 +19,8 @@ class TeamInvitationNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        // Anonymous notifiable (Notification::route) has no DB — mail only
+        return ['mail'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -28,7 +29,7 @@ class TeamInvitationNotification extends Notification
 
         return (new MailMessage)
             ->subject("{$this->invitedBy->name} invited you to join their team")
-            ->greeting("Hello!")
+            ->greeting('Hello!')
             ->line("{$this->invitedBy->name} has invited you to join their team as {$this->invitation->role}.")
             ->action('Accept Invitation', $acceptUrl)
             ->line('This invitation expires in 7 days.')

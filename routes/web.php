@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Admin\AdminAuditLogController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminEmailLogController;
+use App\Http\Controllers\Admin\AdminPackageController;
 use App\Http\Controllers\Admin\AdminPaymentController;
 use App\Http\Controllers\Admin\AdminPlanController;
 use App\Http\Controllers\Admin\AdminSystemSettingController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Client\InboxController;
 use App\Http\Controllers\Client\KnowledgeBaseController;
 use App\Http\Controllers\Client\NotificationController;
 use App\Http\Controllers\Client\PaymentController;
+use App\Http\Controllers\Client\ProductSourceController;
 use App\Http\Controllers\Client\ReplyTemplateController;
 use App\Http\Controllers\Client\SslCommerzController;
 use App\Http\Controllers\Client\TeamController;
@@ -58,7 +60,6 @@ Route::middleware(['auth', 'account.active'])->group(function () {
         $user = request()->user();
 
         return Inertia::render('client/usage-limits', [
-            'subscription' => $usageLimitService->currentSubscription($user)->load('plan'),
             'usage' => $usageLimitService->currentUsageLimit($user),
             'history' => $user->usageLogs()->latest()->limit(20)->get(),
         ]);
@@ -132,6 +133,18 @@ Route::middleware(['auth', 'account.active'])->group(function () {
         Route::delete('{automationRule}', [AutomationRuleController::class, 'destroy'])->name('destroy');
     });
 
+    Route::prefix('product-sources')->name('product-sources.')->group(function () {
+        Route::get('/', [ProductSourceController::class, 'index'])->name('index');
+        Route::post('/', [ProductSourceController::class, 'store'])->name('store');
+        Route::put('{productSource}', [ProductSourceController::class, 'update'])->name('update');
+        Route::delete('{productSource}', [ProductSourceController::class, 'destroy'])->name('destroy');
+        Route::post('{productSource}/sync', [ProductSourceController::class, 'sync'])->name('sync');
+        Route::post('{productSource}/test', [ProductSourceController::class, 'testConnection'])->name('test');
+        Route::get('{productSource}/products', [ProductSourceController::class, 'products'])->name('products');
+        Route::post('{productSource}/products', [ProductSourceController::class, 'storeManualProduct'])->name('products.store');
+        Route::delete('{productSource}/products/{product}', [ProductSourceController::class, 'destroyProduct'])->name('products.destroy');
+    });
+
     Route::prefix('reply-templates')->name('reply-templates.')->group(function () {
         Route::get('/', [ReplyTemplateController::class, 'index'])->name('index');
         Route::post('/', [ReplyTemplateController::class, 'store'])->name('store');
@@ -161,6 +174,11 @@ Route::middleware(['auth', 'account.active'])->group(function () {
         Route::post('users/{user}/extend-limit', [AdminUserController::class, 'extendLimit'])->name('users.extend-limit');
 
         Route::get('plans', [AdminPlanController::class, 'index'])->name('plans.index');
+
+        Route::get('packages', [AdminPackageController::class, 'index'])->name('packages.index');
+        Route::post('packages', [AdminPackageController::class, 'store'])->name('packages.store');
+        Route::put('packages/{package}', [AdminPackageController::class, 'update'])->name('packages.update');
+        Route::delete('packages/{package}', [AdminPackageController::class, 'destroy'])->name('packages.destroy');
         Route::post('plans', [AdminPlanController::class, 'store'])->name('plans.store');
         Route::put('plans/{plan}', [AdminPlanController::class, 'update'])->name('plans.update');
         Route::post('plans/{plan}/deactivate', [AdminPlanController::class, 'deactivate'])->name('plans.deactivate');

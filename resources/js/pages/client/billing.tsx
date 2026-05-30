@@ -1,35 +1,11 @@
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ClientDashboardLayout from '@/layouts/client-dashboard-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router, useForm } from '@inertiajs/react';
-import { CreditCard, Package, Zap } from 'lucide-react';
-import { useState } from 'react';
-
-interface Plan {
-    id: number;
-    name: string;
-    description: string | null;
-    monthly_price: string;
-    yearly_price: string;
-    message_reply_limit: number;
-    comment_reply_limit: number;
-    ai_reply_limit: number;
-    stripe_monthly_price_id: string | null;
-    stripe_yearly_price_id: string | null;
-}
-
-interface Subscription {
-    id: number;
-    status: string;
-    billing_cycle: string;
-    starts_at: string;
-    ends_at: string | null;
-    plan: Plan;
-}
+import { Head, router, usePage } from '@inertiajs/react';
+import { Brain, ImageIcon, MessageSquare, Package, ShoppingCart, Zap } from 'lucide-react';
 
 interface UsageLimit {
     message_reply_limit: number;
@@ -38,18 +14,20 @@ interface UsageLimit {
     comment_reply_used: number;
     ai_reply_limit: number;
     ai_reply_used: number;
-    reset_at: string;
+    image_send_limit: number;
+    image_send_used: number;
 }
 
-interface ExtensionPackage {
+interface UsagePackage {
     id: number;
     name: string;
+    description: string | null;
     message_extra: number;
     comment_extra: number;
     ai_extra: number;
+    image_send_extra: number;
     price: string;
     currency: string;
-    stripe_price_id: string | null;
 }
 
 interface Payment {
@@ -63,11 +41,13 @@ interface Payment {
 }
 
 interface BillingProps {
-    subscription: Subscription;
     usageLimit: UsageLimit;
-    plans: Plan[];
-    packages: ExtensionPackage[];
+    packages: UsagePackage[];
     payments: Payment[];
+}
+
+interface SharedProps {
+    flash?: { success?: string; error?: string };
 }
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Billing', href: '/billing' }];
@@ -81,172 +61,188 @@ function statusVariant(status: string): 'default' | 'secondary' | 'destructive' 
 
 function paymentTypeLabel(type: string): string {
     const labels: Record<string, string> = {
+        limit_extension: 'Credit Purchase',
         subscription: 'Subscription',
-        limit_extension: 'Limit Extension',
         admin_granted: 'Admin Granted',
     };
     return labels[type] ?? type;
 }
 
-export default function Billing({ subscription, usageLimit, plans, packages, payments }: BillingProps) {
-    const [upgradeOpen, setUpgradeOpen] = useState(false);
-    const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+function CreditBar({ used, limit, label, icon: Icon }: { used: number; limit: number; label: string; icon: React.ElementType }) {
+    const remaining = Math.max(0, limit - used);
+    const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
+    const isLow = limit > 0 && pct >= 80;
+    const isEmpty = limit > 0 && remaining === 0;
 
-    const upgradeForm = useForm({ billing_cycle: 'monthly' });
+    return (
+        <div className="rounded-lg border p-4">
+            <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                    <Icon size={15} className="text-muted-foreground" />
+                    {label}
+                </div>
+                <span className={`text-sm font-semibold ${isEmpty ? 'text-red-500' : isLow ? 'text-amber-500' : 'text-green-600'}`}>
+                    {limit === 0 ? <span className="text-muted-foreground text-xs">No credits</span> : `${remaining.toLocaleString()} left`}
+                </span>
+            </div>
+            {limit > 0 ? (
+                <>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                            className={`h-full rounded-full transition-all ${isEmpty ? 'bg-red-500' : isLow ? 'bg-amber-400' : 'bg-green-500'}`}
+                            style={{ width: `${100 - pct}%` }}
+                        />
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                        <span>{used.toLocaleString()} used</span>
+                        <span>{limit.toLocaleString()} total</span>
+                    </div>
+                </>
+            ) : (
+                <p className="text-xs text-muted-foreground mt-1">Buy a package below to get credits.</p>
+            )}
+        </div>
+    );
+}
 
-    function openUpgrade(plan: Plan) {
-        setSelectedPlan(plan);
-        setUpgradeOpen(true);
-    }
+export default function Billing({ usageLimit, packages, payments }: BillingProps) {
+    const { flash } = usePage<SharedProps>().props;
 
-    function submitUpgrade(e: React.FormEvent) {
-        e.preventDefault();
-        if (!selectedPlan) return;
-        upgradeForm.post(`/billing/checkout/${selectedPlan.id}`, {
-            onSuccess: () => setUpgradeOpen(false),
-        });
-    }
-
-    function buyExtension(pkg: ExtensionPackage) {
+    function buyPackage(pkg: UsagePackage) {
         router.post(`/billing/extend-checkout/${pkg.id}`);
     }
 
-    const currentPlanId = subscription.plan.id;
-
     return (
         <ClientDashboardLayout breadcrumbs={breadcrumbs}>
-            <Head title="Billing" />
+            <Head title="Billing & Credits" />
             <div className="flex flex-1 flex-col gap-4 p-4">
                 <div>
-                    <h1 className="text-2xl font-semibold tracking-normal">Billing</h1>
-                    <p className="text-muted-foreground text-sm">Manage your subscription and payment history.</p>
+                    <h1 className="text-2xl font-semibold tracking-normal">Billing & Credits</h1>
+                    <p className="text-muted-foreground text-sm">Buy usage credits and track your consumption.</p>
                 </div>
 
-                {/* Current subscription */}
-                <Card>
-                    <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-                        <CreditCard className="text-muted-foreground h-5 w-5" />
-                        <div className="flex-1">
-                            <CardTitle>{subscription.plan.name}</CardTitle>
-                            <p className="text-muted-foreground text-sm">{subscription.plan.description}</p>
-                        </div>
-                        <Badge variant={subscription.status === 'active' ? 'default' : 'secondary'}>{subscription.status}</Badge>
-                    </CardHeader>
-                    <CardContent className="grid gap-3 text-sm md:grid-cols-3">
-                        <div>
-                            <div className="text-muted-foreground">Billing cycle</div>
-                            <div className="font-medium capitalize">{subscription.billing_cycle}</div>
-                        </div>
-                        <div>
-                            <div className="text-muted-foreground">Price</div>
-                            <div className="font-medium">
-                                ${subscription.billing_cycle === 'yearly' ? subscription.plan.yearly_price : subscription.plan.monthly_price} /{' '}
-                                {subscription.billing_cycle === 'yearly' ? 'year' : 'month'}
-                            </div>
-                        </div>
-                        <div>
-                            <div className="text-muted-foreground">Renews</div>
-                            <div className="font-medium">{subscription.ends_at ? new Date(subscription.ends_at).toLocaleDateString() : '—'}</div>
-                        </div>
-                    </CardContent>
-                </Card>
+                {flash?.success && <Alert><AlertDescription>{flash.success}</AlertDescription></Alert>}
 
-                {/* Plan upgrade */}
+                {/* Credit overview */}
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Zap className="h-5 w-5" />
-                            Available Plans
-                        </CardTitle>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Current Credits</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid gap-4 md:grid-cols-3">
-                            {plans.map((plan) => (
-                                <div
-                                    key={plan.id}
-                                    className={`rounded-lg border p-4 ${plan.id === currentPlanId ? 'border-primary bg-primary/5' : ''}`}
-                                >
-                                    <div className="mb-3 flex items-center justify-between">
-                                        <h3 className="font-semibold">{plan.name}</h3>
-                                        {plan.id === currentPlanId && (
-                                            <Badge variant="default" className="text-xs">
-                                                Current
-                                            </Badge>
-                                        )}
-                                    </div>
-                                    <div className="mb-3 space-y-1 text-sm">
-                                        <div className="text-2xl font-bold">${plan.monthly_price}<span className="text-muted-foreground text-sm font-normal">/mo</span></div>
-                                        <div className="text-muted-foreground text-xs">${plan.yearly_price}/yr</div>
-                                    </div>
-                                    <ul className="mb-4 space-y-1 text-xs text-muted-foreground">
-                                        <li>{plan.message_reply_limit.toLocaleString()} messages/mo</li>
-                                        <li>{plan.comment_reply_limit.toLocaleString()} comments/mo</li>
-                                        <li>{plan.ai_reply_limit.toLocaleString()} AI replies/mo</li>
-                                    </ul>
-                                    <Button
-                                        size="sm"
-                                        variant={plan.id === currentPlanId ? 'outline' : 'default'}
-                                        className="w-full"
-                                        disabled={plan.id === currentPlanId || !plan.stripe_monthly_price_id}
-                                        onClick={() => openUpgrade(plan)}
-                                    >
-                                        {plan.id === currentPlanId ? 'Current Plan' : 'Upgrade'}
-                                    </Button>
-                                </div>
-                            ))}
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            <CreditBar
+                                used={usageLimit.message_reply_used}
+                                limit={usageLimit.message_reply_limit}
+                                label="Message Replies"
+                                icon={MessageSquare}
+                            />
+                            <CreditBar
+                                used={usageLimit.comment_reply_used}
+                                limit={usageLimit.comment_reply_limit}
+                                label="Comment Replies"
+                                icon={Zap}
+                            />
+                            <CreditBar
+                                used={usageLimit.ai_reply_used}
+                                limit={usageLimit.ai_reply_limit}
+                                label="AI Replies"
+                                icon={Brain}
+                            />
+                            <CreditBar
+                                used={usageLimit.image_send_used}
+                                limit={usageLimit.image_send_limit}
+                                label="Image Sends"
+                                icon={ImageIcon}
+                            />
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Limit extension packages */}
-                {packages.length > 0 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Package className="h-5 w-5" />
-                                Limit Extension Packages
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid gap-4 md:grid-cols-3">
+                {/* Buy credits */}
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <ShoppingCart size={16} />
+                            Buy Credits
+                        </CardTitle>
+                        <p className="text-muted-foreground text-sm">
+                            Credits never expire. Buy more anytime when you run out.
+                        </p>
+                    </CardHeader>
+                    <CardContent>
+                        {packages.length === 0 ? (
+                            <p className="text-muted-foreground text-sm py-4 text-center">
+                                No packages available yet. Contact support.
+                            </p>
+                        ) : (
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                 {packages.map((pkg) => (
-                                    <div key={pkg.id} className="rounded-lg border p-4">
-                                        <h3 className="mb-2 font-semibold">{pkg.name}</h3>
-                                        <ul className="mb-3 space-y-1 text-xs text-muted-foreground">
-                                            {pkg.message_extra > 0 && <li>+{pkg.message_extra.toLocaleString()} message replies</li>}
-                                            {pkg.comment_extra > 0 && <li>+{pkg.comment_extra.toLocaleString()} comment replies</li>}
-                                            {pkg.ai_extra > 0 && <li>+{pkg.ai_extra.toLocaleString()} AI replies</li>}
-                                        </ul>
-                                        <div className="mb-3 text-lg font-bold">
-                                            ${pkg.price}{' '}
-                                            <span className="text-muted-foreground text-sm font-normal">{pkg.currency}</span>
+                                    <div
+                                        key={pkg.id}
+                                        className="rounded-xl border p-5 flex flex-col gap-3 hover:border-violet-400 transition-colors"
+                                    >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                                <p className="font-semibold text-sm">{pkg.name}</p>
+                                                {pkg.description && (
+                                                    <p className="text-xs text-muted-foreground mt-0.5">{pkg.description}</p>
+                                                )}
+                                            </div>
+                                            <Package size={16} className="text-muted-foreground shrink-0 mt-0.5" />
                                         </div>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="w-full"
-                                            disabled={!pkg.stripe_price_id}
-                                            onClick={() => buyExtension(pkg)}
-                                        >
-                                            Buy
-                                        </Button>
+
+                                        <div className="space-y-1">
+                                            {pkg.message_extra > 0 && (
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-muted-foreground flex items-center gap-1"><MessageSquare size={11} />Messages</span>
+                                                    <span className="font-medium text-green-600">+{pkg.message_extra.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                            {pkg.comment_extra > 0 && (
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-muted-foreground flex items-center gap-1"><Zap size={11} />Comments</span>
+                                                    <span className="font-medium text-green-600">+{pkg.comment_extra.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                            {pkg.ai_extra > 0 && (
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-muted-foreground flex items-center gap-1"><Brain size={11} />AI Replies</span>
+                                                    <span className="font-medium text-green-600">+{pkg.ai_extra.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                            {pkg.image_send_extra > 0 && (
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-muted-foreground flex items-center gap-1"><ImageIcon size={11} />Image Sends</span>
+                                                    <span className="font-medium text-green-600">+{pkg.image_send_extra.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center justify-between mt-auto pt-2 border-t">
+                                            <div className="text-xl font-bold">
+                                                {pkg.currency} {parseFloat(pkg.price).toLocaleString()}
+                                            </div>
+                                            <Button size="sm" onClick={() => buyPackage(pkg)}>
+                                                Buy Now
+                                            </Button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
-                        </CardContent>
-                    </Card>
-                )}
+                        )}
+                    </CardContent>
+                </Card>
 
                 {/* Payment history */}
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Payment History</CardTitle>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-base">Payment History</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                         <table className="w-full text-sm">
                             <thead className="border-b bg-muted/50">
                                 <tr>
-                                    <th className="px-4 py-2 text-left font-medium">Type</th>
+                                    <th className="px-4 py-2 text-left font-medium">Package</th>
                                     <th className="px-4 py-2 text-left font-medium">Amount</th>
                                     <th className="px-4 py-2 text-left font-medium">Status</th>
                                     <th className="px-4 py-2 text-left font-medium">Date</th>
@@ -264,17 +260,17 @@ export default function Billing({ subscription, usageLimit, plans, packages, pay
                                         <tr key={p.id} className="border-b last:border-0">
                                             <td className="px-4 py-2">{paymentTypeLabel(p.type)}</td>
                                             <td className="px-4 py-2">
-                                                {p.type === 'admin_granted' ? (
-                                                    <span className="text-muted-foreground">Free</span>
-                                                ) : (
-                                                    `$${p.amount} ${p.currency}`
-                                                )}
+                                                {p.type === 'admin_granted'
+                                                    ? <span className="text-muted-foreground">Free</span>
+                                                    : `${p.currency} ${parseFloat(p.amount).toLocaleString()}`}
                                             </td>
                                             <td className="px-4 py-2">
                                                 <Badge variant={statusVariant(p.status)}>{p.status}</Badge>
                                             </td>
                                             <td className="px-4 py-2 text-muted-foreground">
-                                                {p.paid_at ? new Date(p.paid_at).toLocaleDateString() : new Date(p.created_at).toLocaleDateString()}
+                                                {p.paid_at
+                                                    ? new Date(p.paid_at).toLocaleDateString()
+                                                    : new Date(p.created_at).toLocaleDateString()}
                                             </td>
                                         </tr>
                                     ))
@@ -284,39 +280,6 @@ export default function Billing({ subscription, usageLimit, plans, packages, pay
                     </CardContent>
                 </Card>
             </div>
-
-            {/* Upgrade dialog */}
-            <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Upgrade to {selectedPlan?.name}</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={submitUpgrade} className="space-y-4">
-                        <div>
-                            <label className="mb-1 block text-sm font-medium">Billing Cycle</label>
-                            <Select value={upgradeForm.data.billing_cycle} onValueChange={(v) => upgradeForm.setData('billing_cycle', v)}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="monthly">
-                                        Monthly — ${selectedPlan?.monthly_price}/mo
-                                    </SelectItem>
-                                    <SelectItem value="yearly">
-                                        Yearly — ${selectedPlan?.yearly_price}/yr
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <p className="text-muted-foreground text-xs">
-                            You will be redirected to Stripe to complete payment securely.
-                        </p>
-                        <Button type="submit" disabled={upgradeForm.processing} className="w-full">
-                            Continue to Payment
-                        </Button>
-                    </form>
-                </DialogContent>
-            </Dialog>
         </ClientDashboardLayout>
     );
 }

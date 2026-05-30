@@ -121,16 +121,6 @@ class SslCommerzController extends Controller
             return;
         }
 
-        $usageLimit = $usageLimitService->currentUsageLimit($payment->user);
-
-        if ($package->message_extra > 0) {
-            $usageLimit->increment('message_reply_limit', $package->message_extra);
-        }
-        if ($package->comment_extra > 0) {
-            $usageLimit->increment('comment_reply_limit', $package->comment_extra);
-        }
-        if ($package->ai_extra > 0) {
-            $usageLimit->increment('ai_reply_limit', $package->ai_extra);
-        }
+        $usageLimitService->fulfillPackagePurchase($payment->user, $package);
     }
 }

@@ -21,14 +21,11 @@ class PaymentController extends Controller
     public function index(Request $request, UsageLimitService $usageLimitService): \Inertia\Response
     {
         $user = $request->user();
-        $subscription = $usageLimitService->currentSubscription($user)->load('plan');
         $usageLimit = $usageLimitService->currentUsageLimit($user);
 
-        $plans = Plan::where('status', 'active')
-            ->orderBy('monthly_price')
+        $packages = LimitExtensionPackage::where('is_active', true)
+            ->orderBy('price')
             ->get();
-
-        $packages = LimitExtensionPackage::where('is_active', true)->get();
 
         $payments = Payment::where('user_id', $user->id)
             ->latest()
@@ -36,9 +33,7 @@ class PaymentController extends Controller
             ->get();
 
         return Inertia::render('client/billing', [
-            'subscription' => $subscription,
             'usageLimit' => $usageLimit,
-            'plans' => $plans,
             'packages' => $packages,
             'payments' => $payments,
         ]);

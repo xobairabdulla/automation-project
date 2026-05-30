@@ -29,7 +29,16 @@
       "Bash(composer show *)",
       "Bash(vendor/bin/pint database/seeders/AutomationSeeder.php --format agent)",
       "Bash(Get-ChildItem -Recurse resources/js/pages -Filter \"*.tsx\")",
-      "Bash(Select-Object -ExpandProperty FullName)"
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "PowerShell(head *)",
+      "Bash(vendor/bin/pint *)",
+      "Bash(dir *)",
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(gzip -d -c \"C:\\\\Users\\\\xobai\\\\.claude\\\\projects\\\\C--Users-xobai-Documents-Claude-Projects-automation-project\\\\b451e642-f773-49a7-8c38-afc74f7d7d37\\\\tool-results\\\\webfetch-1780094931966-9ynnit.bin\")",
+      "Read(//tmp/**)",
+      "Bash(mkdir -p /tmp/design)",
+      "Bash(tar -xf \"C:\\\\Users\\\\xobai\\\\.claude\\\\projects\\\\C--Users-xobai-Documents-Claude-Projects-automation-project\\\\b451e642-f773-49a7-8c38-afc74f7d7d37\\\\tool-results\\\\webfetch-1780094931966-9ynnit.bin\" -C /tmp/design)",
+      "Bash(npx tsc *)"
     ]
   }
 }

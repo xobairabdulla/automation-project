@@ -2,14 +2,17 @@
 
 namespace App\Jobs;
 
+use App\Models\AiPrompt;
+use App\Models\Conversation;
 use App\Models\FacebookPage;
 use App\Models\User;
 use App\Models\WebhookEvent;
 use App\Models\WebhookEventLog;
-use App\Models\AiPrompt;
 use App\Services\AIReplyService;
 use App\Services\ConversationService;
+use App\Services\FacebookProductReplyService;
 use App\Services\HumanHandoverService;
+use App\Services\ProductMatcherService;
 use App\Services\RuleEngineService;
 use App\Services\UsageLimitService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -26,7 +29,7 @@ class ProcessIncomingMessageJob implements ShouldQueue
 
     public function __construct(public readonly WebhookEvent $webhookEvent) {}
 
-    public function handle(ConversationService $conversationService, UsageLimitService $usageLimitService, RuleEngineService $ruleEngineService, AIReplyService $aiReplyService, HumanHandoverService $handoverService): void
+    public function handle(ConversationService $conversationService, UsageLimitService $usageLimitService, RuleEngineService $ruleEngineService, AIReplyService $aiReplyService, HumanHandoverService $handoverService, ProductMatcherService $productMatcher, FacebookProductReplyService $productReplyService): void
     {
         $payload = $this->webhookEvent->payload_json;
         $messaging = $payload['messaging'][0] ?? null;
@@ -104,6 +107,16 @@ class ProcessIncomingMessageJob implements ShouldQueue
             return;
         }
 
+        // Product image inquiry — check before rule engine so product replies take priority
+        if ($productMatcher->hasProductImageIntent($messageText) || $productMatcher->hasMoreImagesIntent($messageText)) {
+            $handled = $productReplyService->handleMessengerInquiry($page, $conversation, $senderId, $messageText);
+            if ($handled) {
+                $this->markCompleted('Product image inquiry handled.');
+
+                return;
+            }
+        }
+
         $action = $ruleEngineService->findMatchingAction($page, 'message', $messageText);
 
         if ($action && $action->action_type === 'do_nothing') {
@@ -160,13 +173,13 @@ class ProcessIncomingMessageJob implements ShouldQueue
     }
 
     private function tryAIReply(
-        \App\Models\FacebookPage $page,
-        \App\Models\User $user,
+        FacebookPage $page,
+        User $user,
         int $conversationId,
         string $messageText,
         UsageLimitService $usageLimitService,
         AIReplyService $aiReplyService,
-        \App\Models\Conversation $conversation,
+        Conversation $conversation,
         HumanHandoverService $handoverService,
     ): ?string {
         if (! $usageLimitService->canGenerateAIReply($user)) {

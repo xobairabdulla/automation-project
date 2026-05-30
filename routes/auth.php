@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\Auth\AdminAuthController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\OtpVerifyController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
@@ -21,6 +23,10 @@ Route::middleware('guest')->group(function () {
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
+    Route::get('login/otp', [OtpVerifyController::class, 'create'])->name('login.otp');
+    Route::post('login/otp', [OtpVerifyController::class, 'store'])->name('login.otp.verify');
+    Route::post('login/otp/resend', [OtpVerifyController::class, 'resend'])->name('login.otp.resend');
+
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
 
@@ -32,6 +38,12 @@ Route::middleware('guest')->group(function () {
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
         ->name('password.store');
+});
+
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('login', [AdminAuthController::class, 'create'])->name('login');
+    Route::post('login', [AdminAuthController::class, 'store'])->middleware('throttle:10,1');
+    Route::post('logout', [AdminAuthController::class, 'destroy'])->middleware('auth')->name('logout');
 });
 
 Route::middleware('auth')->group(function () {

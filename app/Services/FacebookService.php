@@ -98,6 +98,45 @@ class FacebookService
         ]);
     }
 
+    public function sendImageAttachment(string $pageAccessToken, string $recipientId, string $imageUrl): Response
+    {
+        return Http::withToken($pageAccessToken)->post("{$this->graphBase}/me/messages", [
+            'recipient' => ['id' => $recipientId],
+            'message' => [
+                'attachment' => [
+                    'type' => 'image',
+                    'payload' => [
+                        'url' => $imageUrl,
+                        'is_reusable' => true,
+                    ],
+                ],
+            ],
+            'messaging_type' => 'RESPONSE',
+        ]);
+    }
+
+    /**
+     * Send a Generic Template carousel (max 10 elements).
+     *
+     * @param  array<int, array<string, mixed>>  $elements
+     */
+    public function sendGenericTemplate(string $pageAccessToken, string $recipientId, array $elements): Response
+    {
+        return Http::withToken($pageAccessToken)->post("{$this->graphBase}/me/messages", [
+            'recipient' => ['id' => $recipientId],
+            'message' => [
+                'attachment' => [
+                    'type' => 'template',
+                    'payload' => [
+                        'template_type' => 'generic',
+                        'elements' => array_slice($elements, 0, 10),
+                    ],
+                ],
+            ],
+            'messaging_type' => 'RESPONSE',
+        ]);
+    }
+
     public function replyToComment(string $pageAccessToken, string $commentId, string $text): Response
     {
         return Http::withToken($pageAccessToken)->post("{$this->graphBase}/{$commentId}/comments", [

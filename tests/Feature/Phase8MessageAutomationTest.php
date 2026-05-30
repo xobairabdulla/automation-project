@@ -7,16 +7,17 @@ use App\Jobs\SendFacebookMessageJob;
 use App\Models\Conversation;
 use App\Models\Customer;
 use App\Models\FacebookPage;
-use App\Models\Message;
-use App\Services\AIReplyService;
-use App\Services\HumanHandoverService;
-use App\Services\RuleEngineService;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\UsageLimit;
 use App\Models\User;
 use App\Models\WebhookEvent;
+use App\Services\AIReplyService;
 use App\Services\ConversationService;
+use App\Services\FacebookProductReplyService;
+use App\Services\HumanHandoverService;
+use App\Services\ProductMatcherService;
+use App\Services\RuleEngineService;
 use App\Services\UsageLimitService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -79,7 +80,7 @@ class Phase8MessageAutomationTest extends TestCase
             ]);
 
         $job = new ProcessIncomingMessageJob($event);
-        $job->handle(app(ConversationService::class), app(UsageLimitService::class), app(RuleEngineService::class), app(AIReplyService::class), app(HumanHandoverService::class));
+        $job->handle(app(ConversationService::class), app(UsageLimitService::class), app(RuleEngineService::class), app(AIReplyService::class), app(HumanHandoverService::class), app(ProductMatcherService::class), app(FacebookProductReplyService::class));
 
         $this->assertDatabaseHas('customers', [
             'facebook_page_id' => $this->page->id,
@@ -110,7 +111,7 @@ class Phase8MessageAutomationTest extends TestCase
             ]);
 
         $job = new ProcessIncomingMessageJob($event);
-        $job->handle(app(ConversationService::class), app(UsageLimitService::class), app(RuleEngineService::class), app(AIReplyService::class), app(HumanHandoverService::class));
+        $job->handle(app(ConversationService::class), app(UsageLimitService::class), app(RuleEngineService::class), app(AIReplyService::class), app(HumanHandoverService::class), app(ProductMatcherService::class), app(FacebookProductReplyService::class));
 
         Queue::assertPushed(SendFacebookMessageJob::class);
     }
@@ -129,7 +130,7 @@ class Phase8MessageAutomationTest extends TestCase
             ]);
 
         $job = new ProcessIncomingMessageJob($event);
-        $job->handle(app(ConversationService::class), app(UsageLimitService::class), app(RuleEngineService::class), app(AIReplyService::class), app(HumanHandoverService::class));
+        $job->handle(app(ConversationService::class), app(UsageLimitService::class), app(RuleEngineService::class), app(AIReplyService::class), app(HumanHandoverService::class), app(ProductMatcherService::class), app(FacebookProductReplyService::class));
 
         Queue::assertNotPushed(SendFacebookMessageJob::class);
     }
@@ -158,7 +159,7 @@ class Phase8MessageAutomationTest extends TestCase
             ]);
 
         $job = new ProcessIncomingMessageJob($event);
-        $job->handle(app(ConversationService::class), app(UsageLimitService::class), app(RuleEngineService::class), app(AIReplyService::class), app(HumanHandoverService::class));
+        $job->handle(app(ConversationService::class), app(UsageLimitService::class), app(RuleEngineService::class), app(AIReplyService::class), app(HumanHandoverService::class), app(ProductMatcherService::class), app(FacebookProductReplyService::class));
 
         Queue::assertNotPushed(SendFacebookMessageJob::class);
         $this->assertDatabaseHas('webhook_events', ['id' => $event->id, 'status' => 'completed']);
@@ -181,7 +182,7 @@ class Phase8MessageAutomationTest extends TestCase
             ]);
 
         $job = new ProcessIncomingMessageJob($event);
-        $job->handle(app(ConversationService::class), app(UsageLimitService::class), app(RuleEngineService::class), app(AIReplyService::class), app(HumanHandoverService::class));
+        $job->handle(app(ConversationService::class), app(UsageLimitService::class), app(RuleEngineService::class), app(AIReplyService::class), app(HumanHandoverService::class), app(ProductMatcherService::class), app(FacebookProductReplyService::class));
 
         Queue::assertNotPushed(SendFacebookMessageJob::class);
         $this->assertDatabaseHas('webhook_events', ['id' => $event->id, 'status' => 'completed']);
@@ -199,7 +200,7 @@ class Phase8MessageAutomationTest extends TestCase
             ]);
 
         $job = new ProcessIncomingMessageJob($event);
-        $job->handle(app(ConversationService::class), app(UsageLimitService::class), app(RuleEngineService::class), app(AIReplyService::class), app(HumanHandoverService::class));
+        $job->handle(app(ConversationService::class), app(UsageLimitService::class), app(RuleEngineService::class), app(AIReplyService::class), app(HumanHandoverService::class), app(ProductMatcherService::class), app(FacebookProductReplyService::class));
 
         $this->assertDatabaseHas('usage_logs', [
             'user_id' => $this->user->id,
@@ -223,7 +224,7 @@ class Phase8MessageAutomationTest extends TestCase
         ]);
 
         $job = new ProcessIncomingMessageJob($event);
-        $job->handle(app(ConversationService::class), app(UsageLimitService::class), app(RuleEngineService::class), app(AIReplyService::class), app(HumanHandoverService::class));
+        $job->handle(app(ConversationService::class), app(UsageLimitService::class), app(RuleEngineService::class), app(AIReplyService::class), app(HumanHandoverService::class), app(ProductMatcherService::class), app(FacebookProductReplyService::class));
 
         $this->assertDatabaseHas('webhook_events', ['id' => $event->id, 'status' => 'ignored']);
         Queue::assertNotPushed(SendFacebookMessageJob::class);

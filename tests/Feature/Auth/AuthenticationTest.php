@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Models\LoginLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
@@ -20,6 +21,8 @@ class AuthenticationTest extends TestCase
 
     public function test_users_can_authenticate_using_the_login_screen()
     {
+        Mail::fake();
+
         $user = User::factory()->create();
 
         $response = $this->post('/login', [
@@ -27,11 +30,9 @@ class AuthenticationTest extends TestCase
             'password' => 'password',
         ]);
 
-        $this->assertAuthenticated();
-        $this->assertDatabaseHas(LoginLog::class, [
-            'user_id' => $user->id,
-        ]);
-        $response->assertRedirect(route('dashboard', absolute: false));
+        // After valid credentials, user is NOT yet fully logged in — redirected to OTP step
+        $this->assertGuest();
+        $response->assertRedirect(route('login.otp'));
     }
 
     public function test_suspended_users_can_not_authenticate(): void

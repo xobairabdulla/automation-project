@@ -8,6 +8,7 @@ use App\Models\FacebookPage;
 use App\Models\Role;
 use App\Models\TeamInvitation;
 use App\Models\User;
+use App\Notifications\TeamInvitationNotification;
 use App\Services\TeamService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -52,7 +53,8 @@ class Phase15TeamManagementTest extends TestCase
         $service = app(TeamService::class);
         $service->invite($this->owner, 'agent@example.com', 'agent');
 
-        Notification::assertSentTo($this->owner, \App\Notifications\TeamInvitationNotification::class);
+        // Notification sent on-demand (Notification::route) to the invited email
+        Notification::assertSentOnDemand(TeamInvitationNotification::class);
     }
 
     public function test_invite_rejects_invalid_role(): void
@@ -182,32 +184,32 @@ class Phase15TeamManagementTest extends TestCase
     {
         Notification::fake();
 
-        $response = $this->actingAs($this->owner)->postJson('/team/invite', [
+        $response = $this->actingAs($this->owner)->post('/team/invite', [
             'email' => 'member@example.com',
             'role' => 'agent',
         ]);
 
-        $response->assertStatus(201);
+        $response->assertRedirect();
         $this->assertDatabaseHas('team_invitations', ['email' => 'member@example.com']);
     }
 
     public function test_invite_endpoint_validates_role(): void
     {
-        $response = $this->actingAs($this->owner)->postJson('/team/invite', [
+        $response = $this->actingAs($this->owner)->post('/team/invite', [
             'email' => 'member@example.com',
             'role' => 'client-admin',
         ]);
 
-        $response->assertUnprocessable();
+        $response->assertSessionHasErrors('role');
     }
 
     public function test_revoke_invitation_endpoint(): void
     {
         $invitation = TeamInvitation::factory()->create(['owner_id' => $this->owner->id]);
 
-        $response = $this->actingAs($this->owner)->deleteJson("/team/invitations/{$invitation->id}");
+        $response = $this->actingAs($this->owner)->delete("/team/invitations/{$invitation->id}");
 
-        $response->assertOk();
+        $response->assertRedirect();
         $this->assertDatabaseMissing('team_invitations', ['id' => $invitation->id]);
     }
 
@@ -215,9 +217,9 @@ class Phase15TeamManagementTest extends TestCase
     {
         $member = User::factory()->create(['owner_id' => $this->owner->id]);
 
-        $response = $this->actingAs($this->owner)->deleteJson("/team/members/{$member->id}");
+        $response = $this->actingAs($this->owner)->delete("/team/members/{$member->id}");
 
-        $response->assertOk();
+        $response->assertRedirect();
         $this->assertDatabaseMissing('users', ['id' => $member->id]);
     }
 

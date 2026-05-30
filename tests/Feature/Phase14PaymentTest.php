@@ -66,14 +66,13 @@ class Phase14PaymentTest extends TestCase
         $response->assertInertia(fn ($page) => $page->component('client/billing'));
     }
 
-    public function test_billing_page_contains_subscription_and_plans(): void
+    public function test_billing_page_contains_usage_and_packages(): void
     {
         $response = $this->actingAs($this->user)->get('/billing');
         $response->assertOk();
         $response->assertInertia(
             fn ($page) => $page
-                ->has('subscription')
-                ->has('plans')
+                ->has('usageLimit')
                 ->has('packages')
                 ->has('payments')
         );

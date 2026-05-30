@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Database\Factories\UsageLimitFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class UsageLimit extends Model
 {
-    /** @use HasFactory<\Database\Factories\UsageLimitFactory> */
+    /** @use HasFactory<UsageLimitFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -21,6 +22,8 @@ class UsageLimit extends Model
         'comment_reply_used',
         'ai_reply_limit',
         'ai_reply_used',
+        'image_send_limit',
+        'image_send_used',
         'connected_page_limit',
         'team_member_limit',
         'knowledge_base_limit',

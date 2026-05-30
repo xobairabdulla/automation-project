@@ -6,17 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\TeamInvitation;
 use App\Models\User;
 use App\Services\TeamService;
-use App\Services\UsageLimitService;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+use Inertia\Response;
 use InvalidArgumentException;
 
 class TeamController extends Controller
 {
-    public function index(Request $request, TeamService $teamService): \Inertia\Response
+    public function index(Request $request, TeamService $teamService): Response
     {
         $owner = $request->user();
 
@@ -28,7 +27,7 @@ class TeamController extends Controller
         ]);
     }
 
-    public function invite(Request $request, TeamService $teamService, UsageLimitService $usageLimitService): JsonResponse
+    public function invite(Request $request, TeamService $teamService): RedirectResponse
     {
         $owner = $request->user();
 
@@ -41,41 +40,41 @@ class TeamController extends Controller
         $count = $teamService->memberCountFor($owner);
 
         if ($limit !== null && $count >= $limit) {
-            return response()->json(['message' => "Team member limit ({$limit}) reached."], 422);
+            return back()->withErrors(['invite' => "Team member limit ({$limit}) reached."]);
         }
 
         try {
-            $invitation = $teamService->invite($owner, $validated['email'], $validated['role']);
+            $teamService->invite($owner, $validated['email'], $validated['role']);
         } catch (InvalidArgumentException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return back()->withErrors(['invite' => $e->getMessage()]);
         }
 
-        return response()->json($invitation, 201);
+        return back()->with('success', 'Invitation sent to '.$validated['email'].'.');
     }
 
-    public function revokeInvitation(Request $request, TeamInvitation $invitation, TeamService $teamService): JsonResponse
+    public function revokeInvitation(Request $request, TeamInvitation $invitation, TeamService $teamService): RedirectResponse
     {
         try {
             $teamService->revokeInvitation($request->user(), $invitation);
         } catch (InvalidArgumentException $e) {
-            return response()->json(['message' => $e->getMessage()], 403);
+            return back()->withErrors(['revoke' => $e->getMessage()]);
         }
 
-        return response()->json(['ok' => true]);
+        return back()->with('success', 'Invitation revoked.');
     }
 
-    public function removeMember(Request $request, User $member, TeamService $teamService): JsonResponse
+    public function removeMember(Request $request, User $member, TeamService $teamService): RedirectResponse
     {
         try {
             $teamService->removeMember($request->user(), $member);
         } catch (InvalidArgumentException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return back()->withErrors(['remove' => $e->getMessage()]);
         }
 
-        return response()->json(['ok' => true]);
+        return back()->with('success', 'Member removed.');
     }
 
-    public function showAccept(TeamInvitation $invitation): \Inertia\Response
+    public function showAccept(TeamInvitation $invitation): Response
     {
         abort_if($invitation->isExpired(), 410);
         abort_if(! $invitation->isPending(), 410);

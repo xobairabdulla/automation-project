@@ -1,4 +1,4 @@
-import AppLayout from '@/layouts/app-layout';
+import AdminSidebarLayout from '@/layouts/app/admin-sidebar-layout';
 import { type BreadcrumbItem } from '@/types';
 
 interface AdminDashboardLayoutProps {
@@ -7,5 +7,5 @@ interface AdminDashboardLayoutProps {
 }
 
 export default function AdminDashboardLayout({ children, breadcrumbs = [] }: AdminDashboardLayoutProps) {
-    return <AppLayout breadcrumbs={breadcrumbs}>{children}</AppLayout>;
+    return <AdminSidebarLayout breadcrumbs={breadcrumbs}>{children}</AdminSidebarLayout>;
 }

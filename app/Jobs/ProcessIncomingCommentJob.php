@@ -2,17 +2,20 @@
 
 namespace App\Jobs;
 
+use App\Models\AiPrompt;
 use App\Models\FacebookComment;
 use App\Models\FacebookPage;
 use App\Models\FacebookPost;
 use App\Models\User;
 use App\Models\WebhookEvent;
 use App\Models\WebhookEventLog;
-use App\Models\AiPrompt;
 use App\Services\AIReplyService;
+use App\Services\FacebookProductReplyService;
 use App\Services\HumanHandoverService;
+use App\Services\ProductMatcherService;
 use App\Services\RuleEngineService;
 use App\Services\UsageLimitService;
+use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +30,7 @@ class ProcessIncomingCommentJob implements ShouldQueue
 
     public function __construct(public readonly WebhookEvent $webhookEvent) {}
 
-    public function handle(UsageLimitService $usageLimitService, RuleEngineService $ruleEngineService, AIReplyService $aiReplyService, HumanHandoverService $handoverService): void
+    public function handle(UsageLimitService $usageLimitService, RuleEngineService $ruleEngineService, AIReplyService $aiReplyService, HumanHandoverService $handoverService, ProductMatcherService $productMatcher, FacebookProductReplyService $productReplyService): void
     {
         $payload = $this->webhookEvent->payload_json;
         $change = $payload['changes'][0] ?? null;
@@ -51,7 +54,7 @@ class ProcessIncomingCommentJob implements ShouldQueue
         $commenterId = $value['from']['id'] ?? null;
         $commenterName = $value['from']['name'] ?? null;
         $postId = $value['post_id'] ?? null;
-        $createdTime = isset($value['created_time']) ? \Carbon\Carbon::createFromTimestamp($value['created_time']) : null;
+        $createdTime = isset($value['created_time']) ? Carbon::createFromTimestamp($value['created_time']) : null;
 
         if (! $commentId || ! $postId) {
             $this->markIgnored('Missing comment_id or post_id.');
@@ -130,6 +133,17 @@ class ProcessIncomingCommentJob implements ShouldQueue
             return;
         }
 
+        // Product image inquiry — handle before rule engine
+        if ($commentText && $productMatcher->hasProductImageIntent($commentText)) {
+            $handled = $productReplyService->handleCommentInquiry($page, $comment, $commenterId ?? '');
+            if ($handled) {
+                $comment->update(['status' => 'replied']);
+                $this->markCompleted('Product image comment inquiry handled.');
+
+                return;
+            }
+        }
+
         $action = $ruleEngineService->findMatchingAction($page, 'comment', $commentText ?? '');
 
         if ($action && $action->action_type === 'do_nothing') {
@@ -149,7 +163,7 @@ class ProcessIncomingCommentJob implements ShouldQueue
         $replyText = $action?->resolveReplyText();
 
         if ($replyText === null) {
-            $user = \App\Models\User::find($page->user_id);
+            $user = User::find($page->user_id);
             if ($user && $usageLimitService->canGenerateAIReply($user)) {
                 $aiGenerated = $aiReplyService->generateReply($page, $commentText ?? '', null, $comment->id);
                 if ($aiGenerated === null) {
