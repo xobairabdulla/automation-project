@@ -136,7 +136,7 @@ class UsageLimitService
 
         if (! $usageLimit) {
             $usageLimit = UsageLimit::create([
-                'tenant_id' => $user->tenant_id ?? $user->id,
+                'tenant_id' => null,
                 'user_id' => $tenantId,
                 'subscription_id' => null,
                 'message_reply_limit' => 0,

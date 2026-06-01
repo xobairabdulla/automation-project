@@ -6,9 +6,50 @@ use App\Models\Conversation;
 use App\Models\Customer;
 use App\Models\FacebookPage;
 use App\Models\Message;
+use App\Services\Facebook\FacebookUserProfileService;
+use Illuminate\Support\Facades\Log;
 
 class ConversationService
 {
+    public function syncCustomerProfile(Customer $customer, FacebookPage $page, FacebookUserProfileService $profileService): void
+    {
+        if ($customer->profileSyncedRecently()) {
+            Log::debug('ConversationService: Skipping profile sync — already recent', [
+                'customer_id' => $customer->id,
+                'psid' => $customer->external_customer_id,
+            ]);
+
+            return;
+        }
+
+        $token = $page->page_access_token_encrypted;
+
+        if (! $token) {
+            Log::warning('ConversationService: Page access token missing — cannot sync profile', [
+                'page_id' => $page->id,
+                'customer_id' => $customer->id,
+            ]);
+
+            return;
+        }
+
+        $profile = $profileService->fetchProfile($customer->external_customer_id, $token);
+
+        if ($profile === null) {
+            return;
+        }
+
+        $customer->update([
+            'name' => $profile['full_name'] ?? $customer->name,
+            'facebook_first_name' => $profile['first_name'],
+            'facebook_last_name' => $profile['last_name'],
+            'profile_picture_url' => $profile['profile_pic'] ?? $customer->profile_picture_url,
+            'facebook_locale' => $profile['locale'],
+            'facebook_timezone' => $profile['timezone'],
+            'profile_synced_at' => now(),
+        ]);
+    }
+
     public function findOrCreateCustomer(FacebookPage $page, string $senderId, ?string $name = null): Customer
     {
         return Customer::firstOrCreate(
@@ -39,7 +80,7 @@ class ConversationService
     }
 
     /**
-     * @param array<string, mixed> $metadata
+     * @param  array<string, mixed>  $metadata
      */
     public function saveIncomingMessage(
         Conversation $conversation,
@@ -66,7 +107,7 @@ class ConversationService
     }
 
     /**
-     * @param array<string, mixed> $metadata
+     * @param  array<string, mixed>  $metadata
      */
     public function saveOutgoingMessage(
         Conversation $conversation,

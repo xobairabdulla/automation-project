@@ -76,6 +76,7 @@ Route::middleware(['auth', 'account.active'])->group(function () {
         Route::post('/conversations/{conversation}/notes', [InboxController::class, 'storeNote'])->name('notes.store');
         Route::post('/conversations/{conversation}/tags', [InboxController::class, 'updateTags'])->name('tags.update');
         Route::post('/tags', [InboxController::class, 'storeTags'])->name('tags.store');
+        Route::post('/conversations/{conversation}/refresh-profile', [InboxController::class, 'refreshProfile'])->name('refresh-profile');
         Route::post('/conversations/{conversation}/human-takeover/enable', [HumanHandoverController::class, 'enable'])->name('human-takeover.enable');
         Route::post('/conversations/{conversation}/human-takeover/disable', [HumanHandoverController::class, 'disable'])->name('human-takeover.disable');
         Route::get('/notifications', [InboxController::class, 'notifications'])->name('notifications');

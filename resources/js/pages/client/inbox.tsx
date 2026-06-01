@@ -6,7 +6,7 @@ import ClientDashboardLayout from '@/layouts/client-dashboard-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
 import axios from 'axios';
-import { AlertTriangle, CheckCheck, Clock, MessageSquare, Play, Search, Send, Tag, User, UserX, X } from 'lucide-react';
+import { AlertTriangle, CheckCheck, Clock, MessageSquare, Play, RefreshCw, Search, Send, Tag, User, UserX, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 interface ConversationTag {
@@ -23,10 +23,13 @@ interface Page {
 interface Customer {
     id: number;
     name: string | null;
+    display_name: string;
+    avatar_url: string | null;
     external_customer_id: string;
     profile_picture_url: string | null;
     phone: string | null;
     email: string | null;
+    profile_synced_at: string | null;
 }
 
 interface Message {
@@ -96,6 +99,29 @@ function timeAgo(dateStr: string | null): string {
     return `${Math.floor(hrs / 24)}d`;
 }
 
+function CustomerAvatar({ customer, size = 'md' }: { customer: Customer; size?: 'sm' | 'md' | 'lg' }) {
+    const [imgError, setImgError] = useState(false);
+    const sizeClass = size === 'sm' ? 'h-8 w-8 text-xs' : size === 'lg' ? 'h-12 w-12 text-base' : 'h-10 w-10 text-sm';
+    const initial = (customer.display_name ?? customer.external_customer_id ?? '?')[0].toUpperCase();
+
+    if (customer.avatar_url && !imgError) {
+        return (
+            <img
+                src={customer.avatar_url}
+                alt={customer.display_name}
+                className={`${sizeClass} shrink-0 rounded-full object-cover`}
+                onError={() => setImgError(true)}
+            />
+        );
+    }
+
+    return (
+        <div className={`${sizeClass} shrink-0 flex items-center justify-center rounded-full bg-primary/10 font-semibold uppercase text-primary`}>
+            {initial}
+        </div>
+    );
+}
+
 export default function InboxPage({ pages, tags: initialTags }: Props) {
     const { auth } = usePage<SharedProps>().props;
     const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -114,6 +140,7 @@ export default function InboxPage({ pages, tags: initialTags }: Props) {
     const [showTagInput, setShowTagInput] = useState(false);
     const [handoverReason, setHandoverReason] = useState('');
     const [showHandoverInput, setShowHandoverInput] = useState(false);
+    const [refreshingProfile, setRefreshingProfile] = useState(false);
     const [mobileView, setMobileView] = useState<'list' | 'thread' | 'profile'>('list');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -223,6 +250,18 @@ export default function InboxPage({ pages, tags: initialTags }: Props) {
         setShowTagInput(false);
     }
 
+    async function refreshProfile() {
+        if (!selected) return;
+        setRefreshingProfile(true);
+        try {
+            const r = await axios.post(`/inbox/conversations/${selected.id}/refresh-profile`);
+            setSelected({ ...selected, customer: { ...selected.customer, ...r.data.customer } });
+            loadConversations();
+        } finally {
+            setRefreshingProfile(false);
+        }
+    }
+
     const lastMsg = (conv: ConversationSummary) => conv.messages?.[0]?.message_text ?? '';
 
     return (
@@ -293,13 +332,13 @@ export default function InboxPage({ pages, tags: initialTags }: Props) {
                                     } ${!conv.is_read ? 'border-l-2 border-l-primary' : ''}`}
                                 >
                                     <div className="flex items-start gap-2">
-                                        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold uppercase text-primary">
-                                            {(conv.customer?.name ?? conv.customer?.external_customer_id ?? '?')[0]}
+                                        <div className="mt-0.5">
+                                            <CustomerAvatar customer={conv.customer} size="sm" />
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center justify-between gap-1">
                                                 <span className={`truncate text-sm ${!conv.is_read ? 'font-semibold' : 'font-medium'}`}>
-                                                    {conv.customer?.name ?? conv.customer?.external_customer_id}
+                                                    {conv.customer?.display_name}
                                                 </span>
                                                 <span className="shrink-0 text-xs text-muted-foreground">
                                                     {timeAgo(conv.last_customer_message_at)}
@@ -344,9 +383,10 @@ export default function InboxPage({ pages, tags: initialTags }: Props) {
                                     <button className="md:hidden mr-1 text-muted-foreground" onClick={() => setMobileView('list')}>
                                         ←
                                     </button>
+                                    <CustomerAvatar customer={selected.customer} size="sm" />
                                     <div>
                                         <p className="text-sm font-semibold">
-                                            {selected.customer?.name ?? selected.customer?.external_customer_id}
+                                            {selected.customer?.display_name}
                                         </p>
                                         <p className="text-xs text-muted-foreground">{selected.facebook_page?.page_name}</p>
                                     </div>
@@ -467,13 +507,18 @@ export default function InboxPage({ pages, tags: initialTags }: Props) {
 
                             {/* Customer info */}
                             <div className="border-b p-4">
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold uppercase text-primary">
-                                        {(selected.customer?.name ?? selected.customer?.external_customer_id ?? '?')[0]}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-semibold">{selected.customer?.name ?? 'Unknown'}</p>
-                                        <p className="text-xs text-muted-foreground">{selected.customer?.external_customer_id}</p>
+                                <div className="flex items-start gap-3 mb-3">
+                                    <CustomerAvatar customer={selected.customer} size="lg" />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold truncate">{selected.customer?.display_name}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                            Messenger ID: {selected.customer?.external_customer_id}
+                                        </p>
+                                        {selected.customer?.profile_synced_at && (
+                                            <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                                                Synced {timeAgo(selected.customer.profile_synced_at)}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                                 {selected.customer?.phone && (
@@ -482,6 +527,16 @@ export default function InboxPage({ pages, tags: initialTags }: Props) {
                                 {selected.customer?.email && (
                                     <p className="text-xs text-muted-foreground">✉️ {selected.customer.email}</p>
                                 )}
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="mt-3 h-7 w-full text-xs"
+                                    onClick={refreshProfile}
+                                    disabled={refreshingProfile}
+                                >
+                                    <RefreshCw className={`mr-1 h-3 w-3 ${refreshingProfile ? 'animate-spin' : ''}`} />
+                                    {refreshingProfile ? 'Refreshing...' : 'Refresh Profile'}
+                                </Button>
                             </div>
 
                             {/* Tags */}

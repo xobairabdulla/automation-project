@@ -10,6 +10,7 @@ use App\Models\WebhookEvent;
 use App\Models\WebhookEventLog;
 use App\Services\AIReplyService;
 use App\Services\ConversationService;
+use App\Services\Facebook\FacebookUserProfileService;
 use App\Services\FacebookProductReplyService;
 use App\Services\HumanHandoverService;
 use App\Services\ProductMatcherService;
@@ -29,7 +30,7 @@ class ProcessIncomingMessageJob implements ShouldQueue
 
     public function __construct(public readonly WebhookEvent $webhookEvent) {}
 
-    public function handle(ConversationService $conversationService, UsageLimitService $usageLimitService, RuleEngineService $ruleEngineService, AIReplyService $aiReplyService, HumanHandoverService $handoverService, ProductMatcherService $productMatcher, FacebookProductReplyService $productReplyService): void
+    public function handle(ConversationService $conversationService, UsageLimitService $usageLimitService, RuleEngineService $ruleEngineService, AIReplyService $aiReplyService, HumanHandoverService $handoverService, ProductMatcherService $productMatcher, FacebookProductReplyService $productReplyService, FacebookUserProfileService $profileService): void
     {
         $payload = $this->webhookEvent->payload_json;
         $messaging = $payload['messaging'][0] ?? null;
@@ -59,6 +60,7 @@ class ProcessIncomingMessageJob implements ShouldQueue
         }
 
         $customer = $conversationService->findOrCreateCustomer($page, $senderId);
+        $conversationService->syncCustomerProfile($customer, $page, $profileService);
         $conversation = $conversationService->findOrCreateConversation($page, $customer);
         $conversationService->saveIncomingMessage($conversation, $messageText, $messageId ?? '');
 

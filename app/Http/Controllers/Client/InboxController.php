@@ -8,6 +8,8 @@ use App\Models\ConversationTag;
 use App\Models\Customer;
 use App\Models\FacebookPage;
 use App\Models\InternalNote;
+use App\Services\ConversationService;
+use App\Services\Facebook\FacebookUserProfileService;
 use App\Services\FacebookMessageService;
 use App\Services\UsageLimitService;
 use Illuminate\Http\JsonResponse;
@@ -192,6 +194,19 @@ class InboxController extends Controller
         $notifications = $user->unreadNotifications()->latest()->limit(20)->get();
 
         return response()->json($notifications);
+    }
+
+    public function refreshProfile(Request $request, Conversation $conversation, ConversationService $conversationService, FacebookUserProfileService $profileService): JsonResponse
+    {
+        abort_if($conversation->tenant_id !== $request->user()->effectiveTenantId(), 403);
+
+        $customer = $conversation->customer;
+        $page = $conversation->facebookPage;
+
+        $profileService->bustCache($customer->external_customer_id);
+        $conversationService->syncCustomerProfile($customer, $page, $profileService);
+
+        return response()->json(['customer' => $customer->refresh()]);
     }
 
     public function storeTags(Request $request): JsonResponse

@@ -38,7 +38,22 @@
       "Read(//tmp/**)",
       "Bash(mkdir -p /tmp/design)",
       "Bash(tar -xf \"C:\\\\Users\\\\xobai\\\\.claude\\\\projects\\\\C--Users-xobai-Documents-Claude-Projects-automation-project\\\\b451e642-f773-49a7-8c38-afc74f7d7d37\\\\tool-results\\\\webfetch-1780094931966-9ynnit.bin\" -C /tmp/design)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(curl -s \"http://localhost:8000/api/webhooks/facebook?hub.mode=subscribe&hub.verify_token=fb_webhook_verify_2026_secret&hub.challenge=TEST123\")",
+      "Bash(curl -s \"http://localhost:8000/api/webhooks/facebook\")",
+      "Bash(curl -s \"http://localhost:8000/api/webhooks/facebook?hub.mode=subscribe&hub.verify_token=fb_webhook_verify_2026_secret&hub.challenge=TESTOK\")",
+      "Bash(Get-Content *)",
+      "WebFetch(domain:automation.kajdut.com)",
+      "Bash(git mv *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\xobai\\\\Documents\\\\Claude\\\\Projects\\\\automation-project\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(mkdir -p /c/Users/xobai/Documents/Claude/Projects/automation-project/app/Services/Facebook)",
+      "Bash(mkdir -p /c/Users/xobai/Documents/Claude/Projects/automation-project/docs)",
+      "Bash(php -l app/Services/Facebook/FacebookUserProfileService.php)",
+      "Bash(php -l app/Services/ConversationService.php)",
+      "Bash(php -l app/Models/Customer.php)",
+      "Bash(php -l app/Jobs/ProcessIncomingMessageJob.php)",
+      "Bash(php -l app/Http/Controllers/Client/InboxController.php)"
     ]
   }
 }

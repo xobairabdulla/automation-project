@@ -32,7 +32,7 @@ return [
         'app_id' => env('META_APP_ID'),
         'app_secret' => env('META_APP_SECRET'),
         'redirect_uri' => env('META_REDIRECT_URI', 'http://localhost:8000/facebook/callback'),
-        'webhook_verify_token' => env('META_WEBHOOK_VERIFY_TOKEN'),
+        'webhook_verify_token' => env('FACEBOOK_WEBHOOK_VERIFY_TOKEN', env('META_WEBHOOK_VERIFY_TOKEN')),
         'graph_api_version' => env('META_GRAPH_API_VERSION', 'v20.0'),
     ],
 
