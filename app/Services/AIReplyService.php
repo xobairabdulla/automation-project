@@ -7,12 +7,16 @@ use App\Models\AiProviderSetting;
 use App\Models\AiReplyLog;
 use App\Models\FacebookPage;
 use App\Models\KnowledgeBase;
+use App\Models\KnowledgeBaseItem;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class AIReplyService
 {
     private const UNKNOWN_SENTINEL = '__UNKNOWN__';
+
+    public function __construct(private readonly KnowledgeBaseMatcherService $matcher) {}
 
     public function generateReply(
         FacebookPage $page,
@@ -22,12 +26,31 @@ class AIReplyService
     ): ?string {
         $knowledgeBase = KnowledgeBase::where('facebook_page_id', $page->id)
             ->where('status', 'active')
-            ->with(['items' => fn ($q) => $q->where('status', 'active')])
+            ->with(['items' => fn ($q) => $q->where('status', 'active')->orderByDesc('priority')])
             ->first();
 
-        $aiPrompt = AiPrompt::where('facebook_page_id', $page->id)->first();
+        $allItems = $knowledgeBase?->items ?? collect();
 
-        $systemPrompt = $this->buildSystemPrompt($knowledgeBase, $aiPrompt);
+        // Find the most relevant KB items for this question
+        $matchedItems = $this->matcher->findRelevant($question, $allItems);
+        $this->matcher->logMatch($question, $matchedItems);
+
+        // Use matched items if any; fall back to top 10 by priority for general context
+        $itemsForPrompt = $matchedItems->isNotEmpty() ? $matchedItems : $allItems->take(10);
+
+        Log::info('AIReplyService: KB matching result', [
+            'page_id' => $page->id,
+            'question' => mb_substr($question, 0, 120),
+            'kb_total_items' => $allItems->count(),
+            'matched_count' => $matchedItems->count(),
+            'top_match' => $matchedItems->first()?->title,
+            'top_score' => $matchedItems->first()?->getAttribute('_match_score'),
+            'prompt_items' => $itemsForPrompt->count(),
+            'fallback_to_all' => $matchedItems->isEmpty() && $allItems->isNotEmpty(),
+        ]);
+
+        $aiPrompt = AiPrompt::where('facebook_page_id', $page->id)->first();
+        $systemPrompt = $this->buildSystemPrompt($itemsForPrompt, $aiPrompt);
         $model = $this->resolveModel();
         $apiKey = $this->resolveApiKey();
         $provider = $this->resolveProvider();
@@ -85,10 +108,14 @@ class AIReplyService
             $tokensUsed = $response->json('usage.input_tokens', 0) + $response->json('usage.output_tokens', 0);
 
             if (str_contains($replyText, self::UNKNOWN_SENTINEL)) {
+                Log::info('AIReplyService: Unknown answer — will use fallback', ['page_id' => $page->id]);
+
                 return $this->logAndReturn($page, $conversationId, $facebookCommentId, $systemPrompt, $replyText, $model, $tokensUsed, 'unknown_answer', null);
             }
 
             $this->logAndReturn($page, $conversationId, $facebookCommentId, $systemPrompt, $replyText, $model, $tokensUsed, 'success', null);
+
+            Log::info('AIReplyService: Reply generated', ['page_id' => $page->id, 'reply_length' => mb_strlen($replyText)]);
 
             return trim($replyText);
         } catch (\Throwable $e) {
@@ -134,10 +161,14 @@ class AIReplyService
             $tokensUsed = $response->json('usageMetadata.totalTokenCount', 0);
 
             if (str_contains($replyText, self::UNKNOWN_SENTINEL)) {
+                Log::info('AIReplyService: Unknown answer — will use fallback', ['page_id' => $page->id]);
+
                 return $this->logAndReturn($page, $conversationId, $facebookCommentId, $systemPrompt, $replyText, $model, $tokensUsed, 'unknown_answer', null);
             }
 
             $this->logAndReturn($page, $conversationId, $facebookCommentId, $systemPrompt, $replyText, $model, $tokensUsed, 'success', null);
+
+            Log::info('AIReplyService: Reply generated', ['page_id' => $page->id, 'reply_length' => mb_strlen($replyText)]);
 
             return trim($replyText);
         } catch (\Throwable $e) {
@@ -180,10 +211,14 @@ class AIReplyService
             $tokensUsed = $response->json('usage.total_tokens', 0);
 
             if (str_contains($replyText, self::UNKNOWN_SENTINEL)) {
+                Log::info('AIReplyService: Unknown answer — will use fallback', ['page_id' => $page->id]);
+
                 return $this->logAndReturn($page, $conversationId, $facebookCommentId, $systemPrompt, $replyText, $model, $tokensUsed, 'unknown_answer', null);
             }
 
             $this->logAndReturn($page, $conversationId, $facebookCommentId, $systemPrompt, $replyText, $model, $tokensUsed, 'success', null);
+
+            Log::info('AIReplyService: Reply generated', ['page_id' => $page->id, 'reply_length' => mb_strlen($replyText)]);
 
             return trim($replyText);
         } catch (\Throwable $e) {
@@ -193,31 +228,41 @@ class AIReplyService
         }
     }
 
-    private function buildSystemPrompt(?KnowledgeBase $knowledgeBase, ?AiPrompt $aiPrompt): string
+    /**
+     * @param  Collection<int, KnowledgeBaseItem>  $items
+     */
+    private function buildSystemPrompt(Collection $items, ?AiPrompt $aiPrompt): string
     {
         $tone = $aiPrompt?->tone ?? 'friendly';
-        $language = $aiPrompt?->preferred_language ?? 'en';
-        $useEmoji = $aiPrompt?->use_emoji ? 'You may use relevant emojis.' : 'Do not use emojis.';
-        $restricted = $aiPrompt?->restricted_instructions ? "\n\nAdditional instructions: {$aiPrompt->restricted_instructions}" : '';
+        $useEmoji = $aiPrompt?->use_emoji ? 'You may use 1-2 relevant emojis.' : 'Do not use emojis.';
+        $restricted = $aiPrompt?->restricted_instructions ? "\nADDITIONAL INSTRUCTIONS: {$aiPrompt->restricted_instructions}" : '';
         $sentinel = self::UNKNOWN_SENTINEL;
 
         $knowledgeSection = '';
-        if ($knowledgeBase && $knowledgeBase->items->isNotEmpty()) {
-            $knowledgeSection = "\n\nKNOWLEDGE BASE:\n";
-            foreach ($knowledgeBase->items as $item) {
+        if ($items->isNotEmpty()) {
+            $knowledgeSection = "\n\nKNOWLEDGE BASE (answer from these items ONLY):\n";
+            foreach ($items as $item) {
                 $knowledgeSection .= "[{$item->category}] {$item->title}: {$item->content}\n";
             }
         }
 
         return <<<PROMPT
-You are a helpful customer support assistant. Reply in a {$tone} tone. Respond in language: {$language}. {$useEmoji}
+You are a helpful customer support chatbot for a Facebook business page. Reply in a {$tone} tone. {$useEmoji}
 
-SAFETY RULES (follow strictly):
-- Answer ONLY using the knowledge base below. Do not invent information.
-- Do not state prices, delivery times, or policies that are not in the knowledge base.
-- Do not give legal, medical, or financial advice as final advice.
-- Keep replies concise and helpful.
-- If the question cannot be answered from the knowledge base, respond with exactly: {$sentinel}
+LANGUAGE RULES (strictly follow):
+- Detect the customer's language from their message.
+- If they write in Bangla (বাংলা script) → reply in Bangla.
+- If they write in Banglish (Bangla words using English letters, e.g. "delivery kobe dibo") → reply in Banglish.
+- If they write in English → reply in English.
+- Match the customer's language style naturally.
+
+STRICT RULES (must follow):
+1. Answer ONLY using the knowledge base items below. Do not add any information not present.
+2. Never invent or guess prices, delivery times, stock availability, or policies.
+3. Keep replies SHORT: 2-4 sentences maximum.
+4. If you need more details to help (e.g. order number, product name, size), ask politely.
+5. If the knowledge base does not contain a clear answer, respond with EXACTLY this text and nothing else:
+   {$sentinel}
 {$knowledgeSection}{$restricted}
 PROMPT;
     }

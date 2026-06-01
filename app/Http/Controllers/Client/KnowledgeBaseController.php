@@ -13,6 +13,13 @@ use Inertia\Response;
 
 class KnowledgeBaseController extends Controller
 {
+    private const VALID_CATEGORIES = [
+        'faq', 'product', 'delivery', 'payment', 'order',
+        'complaint', 'support', 'instruction',
+        'pricing', 'refund', 'contact', 'business_hours',
+        'restricted_topic', 'other',
+    ];
+
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -22,7 +29,7 @@ class KnowledgeBaseController extends Controller
             ->where('is_connected', true)
             ->get(['id', 'page_name']);
 
-        $knowledgeBases = KnowledgeBase::with(['items' => fn ($q) => $q->orderBy('category')])
+        $knowledgeBases = KnowledgeBase::with(['items' => fn ($q) => $q->orderByDesc('priority')->orderBy('category')])
             ->where('tenant_id', $user->id)
             ->when($pageId, fn ($q) => $q->where('facebook_page_id', $pageId))
             ->get();
@@ -58,8 +65,10 @@ class KnowledgeBaseController extends Controller
         $validated = $request->validate([
             'knowledge_base_id' => ['required', 'exists:knowledge_bases,id'],
             'title' => ['required', 'string', 'max:255'],
-            'category' => ['required', 'in:faq,product,pricing,delivery,refund,contact,business_hours,restricted_topic,other'],
+            'category' => ['required', 'in:'.implode(',', self::VALID_CATEGORIES)],
             'content' => ['required', 'string'],
+            'keywords' => ['nullable', 'string', 'max:1000'],
+            'priority' => ['nullable', 'integer', 'min:0', 'max:10'],
             'status' => ['required', 'in:active,inactive'],
         ]);
 
@@ -73,6 +82,8 @@ class KnowledgeBaseController extends Controller
             'title' => $validated['title'],
             'category' => $validated['category'],
             'content' => $validated['content'],
+            'keywords' => $this->parseKeywords($validated['keywords'] ?? null),
+            'priority' => $validated['priority'] ?? 0,
             'status' => $validated['status'],
         ]);
 
@@ -85,10 +96,20 @@ class KnowledgeBaseController extends Controller
 
         $validated = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
-            'category' => ['sometimes', 'in:faq,product,pricing,delivery,refund,contact,business_hours,restricted_topic,other'],
+            'category' => ['sometimes', 'in:'.implode(',', self::VALID_CATEGORIES)],
             'content' => ['sometimes', 'string'],
+            'keywords' => ['nullable', 'string', 'max:1000'],
+            'priority' => ['nullable', 'integer', 'min:0', 'max:10'],
             'status' => ['sometimes', 'in:active,inactive'],
         ]);
+
+        if (array_key_exists('keywords', $validated)) {
+            $validated['keywords'] = $this->parseKeywords($validated['keywords']);
+        }
+
+        if (array_key_exists('priority', $validated)) {
+            $validated['priority'] = $validated['priority'] ?? 0;
+        }
 
         $knowledgeBaseItem->update($validated);
 
@@ -102,5 +123,24 @@ class KnowledgeBaseController extends Controller
         $knowledgeBaseItem->delete();
 
         return back()->with('success', 'Item deleted.');
+    }
+
+    /**
+     * Convert comma-separated keyword string to a clean array, or null if empty.
+     *
+     * @return list<string>|null
+     */
+    private function parseKeywords(?string $raw): ?array
+    {
+        if (! $raw || trim($raw) === '') {
+            return null;
+        }
+
+        $keywords = array_values(array_filter(
+            array_map('trim', explode(',', $raw)),
+            fn ($k) => $k !== ''
+        ));
+
+        return $keywords ?: null;
     }
 }

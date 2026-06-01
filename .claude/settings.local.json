@@ -53,7 +53,12 @@
       "Bash(php -l app/Services/ConversationService.php)",
       "Bash(php -l app/Models/Customer.php)",
       "Bash(php -l app/Jobs/ProcessIncomingMessageJob.php)",
-      "Bash(php -l app/Http/Controllers/Client/InboxController.php)"
+      "Bash(php -l app/Http/Controllers/Client/InboxController.php)",
+      "Bash(php -l app/Services/KnowledgeBaseMatcherService.php)",
+      "Bash(php -l app/Services/AIReplyService.php)",
+      "Bash(php -l app/Models/KnowledgeBaseItem.php)",
+      "Bash(php -l app/Http/Controllers/Client/KnowledgeBaseController.php)",
+      "Bash(php -l app/Jobs/ProcessIncomingCommentJob.php)"
     ]
   }
 }

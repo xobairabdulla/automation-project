@@ -146,9 +146,22 @@ class ProcessIncomingMessageJob implements ShouldQueue
             }
         }
 
+        $usingFallback = false;
         if ($replyText === null) {
             $replyText = $this->defaultReply();
+            $usingFallback = true;
+            Log::info('ProcessIncomingMessageJob: Using fallback reply', [
+                'webhook_event_id' => $this->webhookEvent->id,
+                'message' => mb_substr($messageText, 0, 100),
+            ]);
         }
+
+        Log::info('ProcessIncomingMessageJob: Dispatching reply', [
+            'webhook_event_id' => $this->webhookEvent->id,
+            'message' => mb_substr($messageText, 0, 100),
+            'reply' => mb_substr($replyText, 0, 100),
+            'fallback' => $usingFallback,
+        ]);
 
         SendFacebookMessageJob::dispatch($page, $conversation, $senderId, $replyText);
 
@@ -212,7 +225,7 @@ class ProcessIncomingMessageJob implements ShouldQueue
 
     private function defaultReply(): string
     {
-        return 'Thank you for your message! We will get back to you shortly.';
+        return 'ধন্যবাদ আপনার message-এর জন্য। 😊 আপনার প্রশ্নটি একটু বিস্তারিত লিখবেন কি? Product name, screenshot, বা details পাঠালে আমরা ভালোভাবে সাহায্য করতে পারব।';
     }
 
     private function markCompleted(string $message): void

@@ -16,6 +16,8 @@ interface KbItem {
     title: string;
     category: string;
     content: string;
+    keywords: string[] | null;
+    priority: number;
     status: string;
 }
 
@@ -46,7 +48,43 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Knowledge Base', href: '/knowledge-base' },
 ];
 
-const CATEGORIES = ['faq', 'product', 'pricing', 'delivery', 'refund', 'contact', 'business_hours', 'restricted_topic', 'other'];
+const CATEGORIES = [
+    { value: 'faq', label: 'FAQ' },
+    { value: 'product', label: 'Product' },
+    { value: 'delivery', label: 'Delivery' },
+    { value: 'payment', label: 'Payment' },
+    { value: 'order', label: 'Order' },
+    { value: 'complaint', label: 'Complaint' },
+    { value: 'support', label: 'Support' },
+    { value: 'instruction', label: 'Instruction' },
+    { value: 'pricing', label: 'Pricing' },
+    { value: 'refund', label: 'Refund' },
+    { value: 'contact', label: 'Contact' },
+    { value: 'business_hours', label: 'Business Hours' },
+    { value: 'restricted_topic', label: 'Restricted Topic' },
+    { value: 'other', label: 'Other' },
+];
+
+const CATEGORY_COLORS: Record<string, string> = {
+    faq: 'bg-blue-100 text-blue-700',
+    product: 'bg-green-100 text-green-700',
+    delivery: 'bg-orange-100 text-orange-700',
+    payment: 'bg-purple-100 text-purple-700',
+    order: 'bg-cyan-100 text-cyan-700',
+    complaint: 'bg-red-100 text-red-700',
+    support: 'bg-yellow-100 text-yellow-700',
+    instruction: 'bg-indigo-100 text-indigo-700',
+    pricing: 'bg-emerald-100 text-emerald-700',
+    refund: 'bg-rose-100 text-rose-700',
+    contact: 'bg-sky-100 text-sky-700',
+    business_hours: 'bg-amber-100 text-amber-700',
+    restricted_topic: 'bg-gray-100 text-gray-700',
+    other: 'bg-slate-100 text-slate-700',
+};
+
+function keywordsToString(keywords: string[] | null): string {
+    return keywords?.join(', ') ?? '';
+}
 
 export default function KnowledgeBasePage({ knowledgeBases, pages, selectedPageId }: Props) {
     const { flash } = usePage<SharedProps>().props;
@@ -66,10 +104,19 @@ export default function KnowledgeBasePage({ knowledgeBases, pages, selectedPageI
         title: '',
         category: 'faq',
         content: '',
+        keywords: '',
+        priority: '0',
         status: 'active',
     });
 
-    const editForm = useForm({ title: '', category: 'faq', content: '', status: 'active' });
+    const editForm = useForm({
+        title: '',
+        category: 'faq',
+        content: '',
+        keywords: '',
+        priority: '0',
+        status: 'active',
+    });
 
     function submitBase(e: React.FormEvent) {
         e.preventDefault();
@@ -83,11 +130,23 @@ export default function KnowledgeBasePage({ knowledgeBases, pages, selectedPageI
 
     function submitItem(e: React.FormEvent) {
         e.preventDefault();
-        itemForm.post('/knowledge-base/items', { onSuccess: () => { setAddItemOpen(null); itemForm.reset(); } });
+        itemForm.post('/knowledge-base/items', {
+            onSuccess: () => {
+                setAddItemOpen(null);
+                itemForm.reset();
+            },
+        });
     }
 
     function openEdit(item: KbItem) {
-        editForm.setData({ title: item.title, category: item.category, content: item.content, status: item.status });
+        editForm.setData({
+            title: item.title,
+            category: item.category,
+            content: item.content,
+            keywords: keywordsToString(item.keywords),
+            priority: String(item.priority ?? 0),
+            status: item.status,
+        });
         setEditItem(item);
     }
 
@@ -113,7 +172,7 @@ export default function KnowledgeBasePage({ knowledgeBases, pages, selectedPageI
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <h1 className="text-2xl font-semibold tracking-normal">Knowledge Base</h1>
-                        <p className="text-muted-foreground text-sm">Teach the AI about your business.</p>
+                        <p className="text-muted-foreground text-sm">Teach the AI about your business. Higher priority items are matched first.</p>
                     </div>
                     <div className="flex gap-2">
                         <Select value={String(selectedPageId ?? '')} onValueChange={(v) => filterByPage(v ? Number(v) : null)}>
@@ -181,12 +240,26 @@ export default function KnowledgeBasePage({ knowledgeBases, pages, selectedPageI
                                         {kb.items.map((item) => (
                                             <div key={item.id} className="flex items-start justify-between rounded border p-3 gap-3">
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <Badge variant="outline" className="text-xs">{item.category}</Badge>
+                                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${CATEGORY_COLORS[item.category] ?? 'bg-gray-100 text-gray-700'}`}>
+                                                            {item.category}
+                                                        </span>
                                                         <Badge variant={item.status === 'active' ? 'default' : 'secondary'} className="text-xs">{item.status}</Badge>
+                                                        {item.priority > 0 && (
+                                                            <span className="text-xs text-muted-foreground">P{item.priority}</span>
+                                                        )}
                                                         <span className="text-sm font-medium truncate">{item.title}</span>
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground line-clamp-2">{item.content}</p>
+                                                    <p className="text-xs text-muted-foreground line-clamp-2 mb-1">{item.content}</p>
+                                                    {item.keywords && item.keywords.length > 0 && (
+                                                        <div className="flex flex-wrap gap-1 mt-1">
+                                                            {item.keywords.map((kw, i) => (
+                                                                <span key={i} className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                                                    {kw}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="flex gap-1 shrink-0">
                                                     <Button variant="outline" size="sm" onClick={() => openEdit(item)}>Edit</Button>
@@ -204,24 +277,40 @@ export default function KnowledgeBasePage({ knowledgeBases, pages, selectedPageI
 
             {/* Add Item Dialog */}
             <Dialog open={addItemOpen !== null} onOpenChange={(open) => { if (!open) setAddItemOpen(null); }}>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-w-lg">
                     <DialogHeader><DialogTitle>Add Knowledge Item</DialogTitle></DialogHeader>
                     <form onSubmit={submitItem} className="grid gap-3">
                         <div>
                             <Label>Title</Label>
-                            <Input value={itemForm.data.title} onChange={(e) => itemForm.setData('title', e.target.value)} required />
+                            <Input
+                                value={itemForm.data.title}
+                                onChange={(e) => itemForm.setData('title', e.target.value)}
+                                placeholder="e.g. Delivery Time, Cash on Delivery, Return Policy"
+                                required
+                            />
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-3 gap-3">
                             <div>
                                 <Label>Category</Label>
                                 <Select value={itemForm.data.category} onValueChange={(v) => itemForm.setData('category', v)}>
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         {CATEGORIES.map((c) => (
-                                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                                            <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
+                            </div>
+                            <div>
+                                <Label>Priority (0–10)</Label>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    max={10}
+                                    value={itemForm.data.priority}
+                                    onChange={(e) => itemForm.setData('priority', e.target.value)}
+                                    placeholder="0"
+                                />
                             </div>
                             <div>
                                 <Label>Status</Label>
@@ -235,14 +324,25 @@ export default function KnowledgeBasePage({ knowledgeBases, pages, selectedPageI
                             </div>
                         </div>
                         <div>
-                            <Label>Content</Label>
+                            <Label>Keywords / Trigger Phrases</Label>
+                            <Input
+                                value={itemForm.data.keywords}
+                                onChange={(e) => itemForm.setData('keywords', e.target.value)}
+                                placeholder="delivery, কখন পাবো, kobe dibo, shipping charge"
+                            />
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                                Comma-separated phrases. Use Bangla, English, or Banglish. These boost matching accuracy.
+                            </p>
+                        </div>
+                        <div>
+                            <Label>Content / Answer</Label>
                             <textarea
-                                className="w-full rounded border p-2 text-sm"
+                                className="w-full rounded border bg-background p-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                                 rows={4}
                                 required
                                 value={itemForm.data.content}
                                 onChange={(e) => itemForm.setData('content', e.target.value)}
-                                placeholder="Write the answer or information..."
+                                placeholder="Write the full answer or information here..."
                             />
                         </div>
                         <Button type="submit" disabled={itemForm.processing}>Add Item</Button>
@@ -252,24 +352,34 @@ export default function KnowledgeBasePage({ knowledgeBases, pages, selectedPageI
 
             {/* Edit Item Dialog */}
             <Dialog open={editItem !== null} onOpenChange={(open) => { if (!open) setEditItem(null); }}>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-w-lg">
                     <DialogHeader><DialogTitle>Edit Item</DialogTitle></DialogHeader>
                     <form onSubmit={submitEdit} className="grid gap-3">
                         <div>
                             <Label>Title</Label>
                             <Input value={editForm.data.title} onChange={(e) => editForm.setData('title', e.target.value)} />
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-3 gap-3">
                             <div>
                                 <Label>Category</Label>
                                 <Select value={editForm.data.category} onValueChange={(v) => editForm.setData('category', v)}>
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         {CATEGORIES.map((c) => (
-                                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                                            <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
+                            </div>
+                            <div>
+                                <Label>Priority (0–10)</Label>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    max={10}
+                                    value={editForm.data.priority}
+                                    onChange={(e) => editForm.setData('priority', e.target.value)}
+                                />
                             </div>
                             <div>
                                 <Label>Status</Label>
@@ -283,9 +393,20 @@ export default function KnowledgeBasePage({ knowledgeBases, pages, selectedPageI
                             </div>
                         </div>
                         <div>
-                            <Label>Content</Label>
+                            <Label>Keywords / Trigger Phrases</Label>
+                            <Input
+                                value={editForm.data.keywords}
+                                onChange={(e) => editForm.setData('keywords', e.target.value)}
+                                placeholder="delivery, কখন পাবো, kobe dibo, shipping charge"
+                            />
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                                Comma-separated. Bangla, English, or Banglish accepted.
+                            </p>
+                        </div>
+                        <div>
+                            <Label>Content / Answer</Label>
                             <textarea
-                                className="w-full rounded border p-2 text-sm"
+                                className="w-full rounded border bg-background p-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                                 rows={4}
                                 value={editForm.data.content}
                                 onChange={(e) => editForm.setData('content', e.target.value)}

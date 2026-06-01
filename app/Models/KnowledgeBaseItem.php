@@ -16,8 +16,18 @@ class KnowledgeBaseItem extends Model
         'title',
         'category',
         'content',
+        'keywords',
+        'priority',
         'status',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'keywords' => 'array',
+            'priority' => 'integer',
+        ];
+    }
 
     public function knowledgeBase(): BelongsTo
     {

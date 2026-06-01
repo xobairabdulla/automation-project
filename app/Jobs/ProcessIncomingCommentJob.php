@@ -212,7 +212,7 @@ class ProcessIncomingCommentJob implements ShouldQueue
 
     private function defaultReply(): string
     {
-        return 'Thank you for your comment! We will get back to you shortly.';
+        return 'ধন্যবাদ আপনার comment-এর জন্য। 😊 আপনার প্রশ্নটি একটু বিস্তারিত লিখবেন কি? Product name, screenshot, বা details পাঠালে আমরা ভালোভাবে সাহায্য করতে পারব।';
     }
 
     private function markCompleted(string $message): void
