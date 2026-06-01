@@ -199,6 +199,11 @@ Route::middleware(['auth', 'account.active'])->group(function () {
         Route::get('system-settings', [AdminSystemSettingController::class, 'index'])->name('system-settings.index');
         Route::post('system-settings', [AdminSystemSettingController::class, 'upsert'])->name('system-settings.upsert');
         Route::delete('system-settings/{systemSetting}', [AdminSystemSettingController::class, 'destroy'])->name('system-settings.destroy');
+        Route::post('settings/ai', [AdminSystemSettingController::class, 'saveAi'])->name('settings.ai');
+        Route::post('settings/meta', [AdminSystemSettingController::class, 'saveMeta'])->name('settings.meta');
+        Route::post('settings/stripe', [AdminSystemSettingController::class, 'saveStripe'])->name('settings.stripe');
+        Route::post('settings/sslcz', [AdminSystemSettingController::class, 'saveSslcommerz'])->name('settings.sslcz');
+        Route::post('settings/mail', [AdminSystemSettingController::class, 'saveMail'])->name('settings.mail');
     });
 });
 

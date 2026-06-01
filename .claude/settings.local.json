@@ -58,7 +58,10 @@
       "Bash(php -l app/Services/AIReplyService.php)",
       "Bash(php -l app/Models/KnowledgeBaseItem.php)",
       "Bash(php -l app/Http/Controllers/Client/KnowledgeBaseController.php)",
-      "Bash(php -l app/Jobs/ProcessIncomingCommentJob.php)"
+      "Bash(php -l app/Jobs/ProcessIncomingCommentJob.php)",
+      "Bash(php -l app/Models/SystemSetting.php)",
+      "Bash(php -l app/Providers/AppServiceProvider.php)",
+      "Bash(php -l app/Http/Controllers/Admin/AdminSystemSettingController.php)"
     ]
   }
 }

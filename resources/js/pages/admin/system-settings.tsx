@@ -1,192 +1,461 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import AdminDashboardLayout from '@/layouts/admin-dashboard-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router, useForm } from '@inertiajs/react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Head, useForm, usePage } from '@inertiajs/react';
+import { CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 
-interface SystemSetting {
-    id: number;
-    key: string;
-    value_encrypted_or_json: string;
-    type: string;
-    is_sensitive: boolean;
-    updated_at: string;
+interface AiProps {
+    provider_name: string;
+    model: string;
+    key_is_set: boolean;
+}
+
+interface MetaProps {
+    app_id: string;
+    app_secret_set: boolean;
+    webhook_verify_token_set: boolean;
+    redirect_uri: string;
+    graph_api_version: string;
+}
+
+interface StripeProps {
+    key_set: boolean;
+    secret_set: boolean;
+    webhook_secret_set: boolean;
+}
+
+interface SslczProps {
+    store_id: string;
+    store_password_set: boolean;
+    is_sandbox: boolean;
+}
+
+interface MailProps {
+    host: string;
+    port: string;
+    username: string;
+    password_set: boolean;
+    encryption: string;
+    from_address: string;
+    from_name: string;
 }
 
 interface Props {
-    settings: SystemSetting[];
+    ai: AiProps;
+    meta: MetaProps;
+    stripe: StripeProps;
+    sslcz: SslczProps;
+    mail: MailProps;
+}
+
+interface SharedProps {
+    flash?: { success?: string; error?: string };
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Admin', href: '/admin/dashboard' },
-    { title: 'System Settings', href: '/admin/system-settings' },
+    { title: 'API Keys & Settings', href: '/admin/system-settings' },
 ];
 
-interface SettingForm {
-    key: string;
+function SecretInput({
+    label,
+    name,
+    isSet,
+    value,
+    onChange,
+    placeholder,
+}: {
+    label: string;
+    name: string;
+    isSet: boolean;
     value: string;
-    type: string;
+    onChange: (v: string) => void;
+    placeholder?: string;
+}) {
+    const [show, setShow] = useState(false);
+
+    return (
+        <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+                <Label className="text-xs">{label}</Label>
+                {isSet && (
+                    <span className="flex items-center gap-1 text-[11px] text-green-600">
+                        <CheckCircle className="h-3 w-3" />
+                        Set
+                    </span>
+                )}
+            </div>
+            <div className="relative">
+                <Input
+                    type={show ? 'text' : 'password'}
+                    name={name}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder={isSet ? 'Leave empty to keep current value' : (placeholder ?? 'Paste key here')}
+                    className="pr-9 font-mono text-xs"
+                    autoComplete="new-password"
+                />
+                <button
+                    type="button"
+                    onClick={() => setShow((s) => !s)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                >
+                    {show ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
+            </div>
+        </div>
+    );
 }
 
-export default function SystemSettings({ settings }: Props) {
-    const [editing, setEditing] = useState<SystemSetting | null>(null);
-    const [showForm, setShowForm] = useState(false);
+function SectionCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle className="text-base">{title}</CardTitle>
+                {description && <p className="text-xs text-muted-foreground">{description}</p>}
+            </CardHeader>
+            <CardContent>{children}</CardContent>
+        </Card>
+    );
+}
 
-    const { data, setData, post, processing, errors, reset } = useForm<SettingForm>({
-        key: '',
-        value: '',
-        type: 'string',
+function Flash() {
+    const { flash } = usePage<SharedProps>().props;
+    if (!flash?.success && !flash?.error) return null;
+    return (
+        <div className={`rounded-md px-4 py-2 text-sm ${flash.success ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+            {flash.success ?? flash.error}
+        </div>
+    );
+}
+
+export default function SystemSettings({ ai, meta, stripe, sslcz, mail }: Props) {
+    // ── AI Provider ────────────────────────────────────────────────────────
+    const aiForm = useForm({
+        provider_name: ai.provider_name,
+        model: ai.model,
+        api_key: '',
     });
 
-    function openNew() {
-        reset();
-        setEditing(null);
-        setShowForm(true);
-    }
+    // ── Facebook / Meta ────────────────────────────────────────────────────
+    const metaForm = useForm({
+        app_id: meta.app_id,
+        app_secret: '',
+        webhook_verify_token: '',
+        redirect_uri: meta.redirect_uri,
+        graph_api_version: meta.graph_api_version,
+    });
 
-    function openEdit(setting: SystemSetting) {
-        setData({
-            key: setting.key,
-            value: setting.value_encrypted_or_json,
-            type: setting.type,
-        });
-        setEditing(setting);
-        setShowForm(true);
-    }
+    // ── Stripe ─────────────────────────────────────────────────────────────
+    const stripeForm = useForm({
+        stripe_key: '',
+        stripe_secret: '',
+        stripe_webhook_secret: '',
+    });
 
-    function submit(e: React.FormEvent) {
-        e.preventDefault();
-        post('/admin/system-settings', {
-            onSuccess: () => {
-                setShowForm(false);
-                reset();
-                setEditing(null);
-            },
-        });
-    }
+    // ── SSLCommerz ─────────────────────────────────────────────────────────
+    const sslczForm = useForm({
+        store_id: sslcz.store_id,
+        store_password: '',
+        is_sandbox: sslcz.is_sandbox,
+    });
 
-    function deleteSetting(setting: SystemSetting) {
-        if (!confirm(`Delete setting "${setting.key}"?`)) return;
-        router.delete(`/admin/system-settings/${setting.id}`);
-    }
+    // ── Mail ───────────────────────────────────────────────────────────────
+    const mailForm = useForm({
+        host: mail.host,
+        port: mail.port,
+        username: mail.username,
+        password: '',
+        encryption: mail.encryption,
+        from_address: mail.from_address,
+        from_name: mail.from_name,
+    });
+
+    const AI_PROVIDERS = [
+        { value: 'gemini', label: 'Google Gemini' },
+        { value: 'anthropic', label: 'Anthropic Claude' },
+        { value: 'openai', label: 'OpenAI GPT' },
+    ];
+
+    const AI_MODELS: Record<string, string[]> = {
+        gemini: ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
+        anthropic: ['claude-opus-4-8', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'],
+        openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
+    };
 
     return (
         <AdminDashboardLayout breadcrumbs={breadcrumbs}>
-            <Head title="Admin: System Settings" />
-            <div className="space-y-4 p-4">
-                <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">{settings.length} settings</p>
-                    <Button size="sm" onClick={openNew}>
-                        <Plus className="mr-1 size-4" />
-                        Add Setting
-                    </Button>
+            <Head title="Admin: API Keys & Settings" />
+            <div className="space-y-6 p-4 max-w-3xl">
+                <div>
+                    <h1 className="text-xl font-semibold">API Keys & Settings</h1>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                        Manage API credentials. Sensitive values are stored encrypted and override .env at runtime.
+                    </p>
                 </div>
 
-                {showForm && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">{editing ? `Edit: ${editing.key}` : 'New Setting'}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <form onSubmit={submit} className="space-y-3">
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                                    <div className="flex flex-col gap-1">
-                                        <label className="text-xs text-muted-foreground">Key</label>
-                                        <Input
-                                            value={data.key}
-                                            onChange={(e) => setData('key', e.target.value)}
-                                            placeholder="setting_key"
-                                            disabled={!!editing}
-                                        />
-                                        {errors.key && <p className="text-xs text-red-500">{errors.key}</p>}
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <label className="text-xs text-muted-foreground">Type</label>
-                                        <select
-                                            value={data.type}
-                                            onChange={(e) => setData('type', e.target.value)}
-                                            className="rounded border px-2 py-1.5 text-sm"
-                                        >
-                                            <option value="string">String</option>
-                                            <option value="integer">Integer</option>
-                                            <option value="boolean">Boolean</option>
-                                            <option value="json">JSON</option>
-                                        </select>
-                                        {errors.type && <p className="text-xs text-red-500">{errors.type}</p>}
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <label className="text-xs text-muted-foreground">Value</label>
-                                        <Input
-                                            value={data.value}
-                                            onChange={(e) => setData('value', e.target.value)}
-                                            placeholder="value"
-                                        />
-                                        {errors.value && <p className="text-xs text-red-500">{errors.value}</p>}
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <Button type="submit" size="sm" disabled={processing}>
-                                        Save
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => {
-                                            setShowForm(false);
-                                            reset();
-                                            setEditing(null);
-                                        }}
-                                    >
-                                        Cancel
-                                    </Button>
-                                </div>
-                            </form>
-                        </CardContent>
-                    </Card>
-                )}
+                <Flash />
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="border-b text-left text-muted-foreground">
-                                <th className="pb-2 pr-4">Key</th>
-                                <th className="pb-2 pr-4">Type</th>
-                                <th className="pb-2 pr-4">Value</th>
-                                <th className="pb-2 pr-4">Updated</th>
-                                <th className="pb-2">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {settings.map((s) => (
-                                <tr key={s.id} className="border-b last:border-0">
-                                    <td className="py-2 pr-4 font-mono font-medium">{s.key}</td>
-                                    <td className="py-2 pr-4">
-                                        <span className="rounded bg-muted px-1.5 py-0.5 text-xs">{s.type}</span>
-                                    </td>
-                                    <td className="max-w-xs py-2 pr-4 truncate font-mono text-xs text-muted-foreground">
-                                        {s.is_sensitive ? '••••••••' : s.value_encrypted_or_json}
-                                    </td>
-                                    <td className="py-2 pr-4 text-xs text-muted-foreground">{new Date(s.updated_at).toLocaleString()}</td>
-                                    <td className="py-2">
-                                        <div className="flex gap-1">
-                                            <Button variant="ghost" size="sm" onClick={() => openEdit(s)}>
-                                                <Pencil className="size-3.5" />
-                                            </Button>
-                                            <Button variant="ghost" size="sm" onClick={() => deleteSetting(s)}>
-                                                <Trash2 className="size-3.5 text-red-500" />
-                                            </Button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    {settings.length === 0 && <p className="py-8 text-center text-muted-foreground">No settings configured.</p>}
-                </div>
+                {/* ── AI Provider ─────────────────────────────────────────────── */}
+                <SectionCard title="🤖 AI Provider" description="Controls which AI powers the bot replies.">
+                    <form
+                        onSubmit={(e) => { e.preventDefault(); aiForm.post('/admin/settings/ai'); }}
+                        className="space-y-3"
+                    >
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div className="flex flex-col gap-1">
+                                <Label className="text-xs">Provider</Label>
+                                <select
+                                    value={aiForm.data.provider_name}
+                                    onChange={(e) => {
+                                        aiForm.setData('provider_name', e.target.value);
+                                        aiForm.setData('model', AI_MODELS[e.target.value]?.[0] ?? '');
+                                    }}
+                                    className="rounded border bg-background px-2 py-1.5 text-sm"
+                                >
+                                    {AI_PROVIDERS.map((p) => (
+                                        <option key={p.value} value={p.value}>{p.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <Label className="text-xs">Model</Label>
+                                <select
+                                    value={aiForm.data.model}
+                                    onChange={(e) => aiForm.setData('model', e.target.value)}
+                                    className="rounded border bg-background px-2 py-1.5 text-sm font-mono"
+                                >
+                                    {(AI_MODELS[aiForm.data.provider_name] ?? []).map((m) => (
+                                        <option key={m} value={m}>{m}</option>
+                                    ))}
+                                    <option value={aiForm.data.model}>{aiForm.data.model}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <SecretInput
+                            label="API Key"
+                            name="api_key"
+                            isSet={ai.key_is_set}
+                            value={aiForm.data.api_key}
+                            onChange={(v) => aiForm.setData('api_key', v)}
+                        />
+                        <Button type="submit" size="sm" disabled={aiForm.processing}>Save AI Settings</Button>
+                    </form>
+                </SectionCard>
+
+                {/* ── Facebook / Meta ──────────────────────────────────────────── */}
+                <SectionCard title="📘 Facebook / Meta App" description="Required for Messenger webhooks and page connections.">
+                    <form
+                        onSubmit={(e) => { e.preventDefault(); metaForm.post('/admin/settings/meta'); }}
+                        className="space-y-3"
+                    >
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div className="flex flex-col gap-1">
+                                <Label className="text-xs">App ID</Label>
+                                <Input
+                                    value={metaForm.data.app_id}
+                                    onChange={(e) => metaForm.setData('app_id', e.target.value)}
+                                    placeholder="2226848041458185"
+                                    className="font-mono text-xs"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <Label className="text-xs">Graph API Version</Label>
+                                <Input
+                                    value={metaForm.data.graph_api_version}
+                                    onChange={(e) => metaForm.setData('graph_api_version', e.target.value)}
+                                    placeholder="v20.0"
+                                    className="font-mono text-xs"
+                                />
+                            </div>
+                        </div>
+                        <SecretInput
+                            label="App Secret"
+                            name="app_secret"
+                            isSet={meta.app_secret_set}
+                            value={metaForm.data.app_secret}
+                            onChange={(v) => metaForm.setData('app_secret', v)}
+                        />
+                        <SecretInput
+                            label="Webhook Verify Token"
+                            name="webhook_verify_token"
+                            isSet={meta.webhook_verify_token_set}
+                            value={metaForm.data.webhook_verify_token}
+                            onChange={(v) => metaForm.setData('webhook_verify_token', v)}
+                            placeholder="fb_webhook_verify_2026_secret"
+                        />
+                        <div className="flex flex-col gap-1">
+                            <Label className="text-xs">OAuth Redirect URI</Label>
+                            <Input
+                                value={metaForm.data.redirect_uri}
+                                onChange={(e) => metaForm.setData('redirect_uri', e.target.value)}
+                                placeholder="https://yourdomain.com/facebook/callback"
+                                className="font-mono text-xs"
+                            />
+                        </div>
+                        <Button type="submit" size="sm" disabled={metaForm.processing}>Save Meta Settings</Button>
+                    </form>
+                </SectionCard>
+
+                {/* ── Stripe ───────────────────────────────────────────────────── */}
+                <SectionCard title="💳 Stripe" description="Payment gateway for subscription billing.">
+                    <form
+                        onSubmit={(e) => { e.preventDefault(); stripeForm.post('/admin/settings/stripe'); }}
+                        className="space-y-3"
+                    >
+                        <SecretInput
+                            label="Publishable Key (pk_live_…)"
+                            name="stripe_key"
+                            isSet={stripe.key_set}
+                            value={stripeForm.data.stripe_key}
+                            onChange={(v) => stripeForm.setData('stripe_key', v)}
+                            placeholder="pk_live_…"
+                        />
+                        <SecretInput
+                            label="Secret Key (sk_live_…)"
+                            name="stripe_secret"
+                            isSet={stripe.secret_set}
+                            value={stripeForm.data.stripe_secret}
+                            onChange={(v) => stripeForm.setData('stripe_secret', v)}
+                            placeholder="sk_live_…"
+                        />
+                        <SecretInput
+                            label="Webhook Secret (whsec_…)"
+                            name="stripe_webhook_secret"
+                            isSet={stripe.webhook_secret_set}
+                            value={stripeForm.data.stripe_webhook_secret}
+                            onChange={(v) => stripeForm.setData('stripe_webhook_secret', v)}
+                            placeholder="whsec_…"
+                        />
+                        <Button type="submit" size="sm" disabled={stripeForm.processing}>Save Stripe Settings</Button>
+                    </form>
+                </SectionCard>
+
+                {/* ── SSLCommerz ───────────────────────────────────────────────── */}
+                <SectionCard title="🏦 SSLCommerz" description="Local payment gateway (Bangladesh).">
+                    <form
+                        onSubmit={(e) => { e.preventDefault(); sslczForm.post('/admin/settings/sslcz'); }}
+                        className="space-y-3"
+                    >
+                        <div className="flex flex-col gap-1">
+                            <Label className="text-xs">Store ID</Label>
+                            <Input
+                                value={sslczForm.data.store_id}
+                                onChange={(e) => sslczForm.setData('store_id', e.target.value)}
+                                placeholder="your_store_id"
+                                className="font-mono text-xs"
+                            />
+                        </div>
+                        <SecretInput
+                            label="Store Password"
+                            name="store_password"
+                            isSet={sslcz.store_password_set}
+                            value={sslczForm.data.store_password}
+                            onChange={(v) => sslczForm.setData('store_password', v)}
+                            placeholder="your_store_password"
+                        />
+                        <div className="flex items-center gap-3">
+                            <input
+                                type="checkbox"
+                                id="is_sandbox"
+                                checked={sslczForm.data.is_sandbox}
+                                onChange={(e) => sslczForm.setData('is_sandbox', e.target.checked)}
+                                className="h-4 w-4 rounded border"
+                            />
+                            <Label htmlFor="is_sandbox" className="text-xs cursor-pointer">
+                                Sandbox / Test mode
+                            </Label>
+                        </div>
+                        <Button type="submit" size="sm" disabled={sslczForm.processing}>Save SSLCommerz Settings</Button>
+                    </form>
+                </SectionCard>
+
+                {/* ── Mail / SMTP ──────────────────────────────────────────────── */}
+                <SectionCard title="✉️ Mail / SMTP" description="Outgoing email for notifications and OTP.">
+                    <form
+                        onSubmit={(e) => { e.preventDefault(); mailForm.post('/admin/settings/mail'); }}
+                        className="space-y-3"
+                    >
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            <div className="col-span-2 flex flex-col gap-1">
+                                <Label className="text-xs">SMTP Host</Label>
+                                <Input
+                                    value={mailForm.data.host}
+                                    onChange={(e) => mailForm.setData('host', e.target.value)}
+                                    placeholder="smtp.gmail.com"
+                                    className="font-mono text-xs"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <Label className="text-xs">Port</Label>
+                                <Input
+                                    type="number"
+                                    value={mailForm.data.port}
+                                    onChange={(e) => mailForm.setData('port', e.target.value)}
+                                    placeholder="587"
+                                    className="font-mono text-xs"
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div className="flex flex-col gap-1">
+                                <Label className="text-xs">Username / Email</Label>
+                                <Input
+                                    value={mailForm.data.username}
+                                    onChange={(e) => mailForm.setData('username', e.target.value)}
+                                    placeholder="you@gmail.com"
+                                    className="font-mono text-xs"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <Label className="text-xs">Encryption</Label>
+                                <select
+                                    value={mailForm.data.encryption}
+                                    onChange={(e) => mailForm.setData('encryption', e.target.value)}
+                                    className="rounded border bg-background px-2 py-1.5 text-sm"
+                                >
+                                    <option value="tls">TLS (port 587)</option>
+                                    <option value="ssl">SSL (port 465)</option>
+                                    <option value="">None</option>
+                                </select>
+                            </div>
+                        </div>
+                        <SecretInput
+                            label="App Password"
+                            name="mail_password"
+                            isSet={mail.password_set}
+                            value={mailForm.data.password}
+                            onChange={(v) => mailForm.setData('password', v)}
+                            placeholder="Gmail App Password (not your Gmail password)"
+                        />
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div className="flex flex-col gap-1">
+                                <Label className="text-xs">From Address</Label>
+                                <Input
+                                    value={mailForm.data.from_address}
+                                    onChange={(e) => mailForm.setData('from_address', e.target.value)}
+                                    placeholder="noreply@yoursite.com"
+                                    className="font-mono text-xs"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <Label className="text-xs">From Name</Label>
+                                <Input
+                                    value={mailForm.data.from_name}
+                                    onChange={(e) => mailForm.setData('from_name', e.target.value)}
+                                    placeholder="Befit Automation"
+                                    className="text-xs"
+                                />
+                            </div>
+                        </div>
+                        <Button type="submit" size="sm" disabled={mailForm.processing}>Save Mail Settings</Button>
+                    </form>
+                </SectionCard>
             </div>
         </AdminDashboardLayout>
     );
