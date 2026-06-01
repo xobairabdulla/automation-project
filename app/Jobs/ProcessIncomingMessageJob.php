@@ -65,12 +65,19 @@ class ProcessIncomingMessageJob implements ShouldQueue
         $conversationService->saveIncomingMessage($conversation, $messageText, $messageId ?? '');
 
         if (! $page->message_automation_enabled) {
+            Log::info('ProcessIncomingMessageJob: Stopped — message automation disabled', [
+                'page_id' => $page->id,
+                'webhook_event_id' => $this->webhookEvent->id,
+            ]);
             $this->markCompleted('Message automation disabled for page.');
 
             return;
         }
 
         if ($conversation->human_takeover) {
+            Log::info('ProcessIncomingMessageJob: Stopped — human takeover active', [
+                'conversation_id' => $conversation->id,
+            ]);
             $this->markCompleted('Human takeover active — no auto reply.');
 
             return;
@@ -79,12 +86,18 @@ class ProcessIncomingMessageJob implements ShouldQueue
         $user = User::find($page->user_id);
 
         if (! $user) {
+            Log::warning('ProcessIncomingMessageJob: Stopped — user not found', [
+                'page_id' => $page->id,
+            ]);
             $this->markFailed('User not found for page.');
 
             return;
         }
 
         if (! $usageLimitService->canSendMessageReply($user)) {
+            Log::info('ProcessIncomingMessageJob: Stopped — message reply usage limit reached', [
+                'user_id' => $user->id,
+            ]);
             $this->markCompleted('Message reply usage limit reached.');
 
             return;
@@ -96,6 +109,9 @@ class ProcessIncomingMessageJob implements ShouldQueue
                 'customer_id' => $customer->id,
             ]);
         } catch (\InvalidArgumentException $e) {
+            Log::info('ProcessIncomingMessageJob: Stopped — usage limit exceeded mid-flight', [
+                'error' => $e->getMessage(),
+            ]);
             $this->markCompleted('Usage limit check failed: '.$e->getMessage());
 
             return;
